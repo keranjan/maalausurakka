@@ -15,11 +15,15 @@
   @keyframes goldpulse { 0%,100%{box-shadow:0 0 0 0 rgba(232,197,106,0);} 50%{box-shadow:0 0 14px 2px rgba(232,197,106,.55);} }
   @keyframes risein { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
   @keyframes bannerdrop { from{opacity:0;transform:translateY(-16px);} to{opacity:1;transform:none;} }
+  @keyframes flashcard { 0%,100%{border-color:#3a2f22;} 50%{border-color:#e8c56a;} }
   .mini-chip { transition: transform .08s ease, background .15s ease, border-color .15s ease; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
   .mini-chip:active { transform: scale(.85); }
   .card-in { animation: risein .3s ease both; }
   .match-row:hover { background: #2c251c !important; }
-  @media (prefers-reduced-motion: reduce) { .card-in, .mini-chip { animation: none !important; transition: none !important; } }
+  .flash { animation: flashcard 1s ease 2; }
+  .hm::-webkit-scrollbar { height: 6px; }
+  .hm::-webkit-scrollbar-thumb { background: #3a2f22; border-radius: 3px; }
+  @media (prefers-reduced-motion: reduce) { .card-in, .mini-chip, .flash { animation: none !important; transition: none !important; } }
   button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #e8c56a; outline-offset: 2px; }
   input::placeholder { color: #6e6558; }
 </style>
@@ -41,12 +45,21 @@ const supa = (SUPABASE_URL && SUPABASE_ANON_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
+/* ---- mallit ja hakubudjetti ----
+   Haiku 4.5 maksaa noin kolmasosan Sonnetin hinnasta ($1/$5 vs $3/$15 per Mtok).
+   Jos tuotelistat tai minimäärät osuvat huonosti, vaihda MODEL_CONTENTS
+   (tai molemmat) takaisin arvoon "claude-sonnet-4-6".
+   MAX_SEARCHES on kova katto web-hauille per kutsu — pienempi = halvempi. */
+const MODEL_SEARCH = "claude-haiku-4-5-20251001";
+const MODEL_CONTENTS = "claude-haiku-4-5-20251001";
+const MAX_SEARCHES = 2;
+
 const STAGES = [
-  { key: 0, name: "To-do",             short: "TD", color: "#7d7f85", bg: "#3a3c41", desc: "Harmaata muovia" },
-  { key: 1, name: "Kasattu",           short: "KA", color: "#9fb4c2", bg: "#41505c", desc: "Kasattu, ei maalia" },
-  { key: 2, name: "Pohjamaalattu",     short: "PM", color: "#c8c8cf", bg: "#232326", desc: "Primeri päällä" },
-  { key: 3, name: "Maalaus aloitettu", short: "MA", color: "#d98a4b", bg: "#6e3d1e", desc: "Työn alla" },
-  { key: 4, name: "Valmis",            short: "OK", color: "#e8c56a", bg: "#7a5c1e", desc: "Maalattu ja valmis!" },
+  { key: 0, name: "To-do",             short: "TD", color: "#7d7f85", bg: "#3a3c41", desc: "Harmaata muovia",   verb: "kasausta",             min: 6 },
+  { key: 1, name: "Kasattu",           short: "KA", color: "#9fb4c2", bg: "#41505c", desc: "Kasattu, ei maalia", verb: "pohjamaalia",          min: 2 },
+  { key: 2, name: "Pohjamaalattu",     short: "PM", color: "#c8c8cf", bg: "#232326", desc: "Primeri päällä",     verb: "maalauksen aloitusta", min: 10 },
+  { key: 3, name: "Maalaus aloitettu", short: "MA", color: "#d98a4b", bg: "#6e3d1e", desc: "Työn alla",          verb: "viimeistelyä",         min: 15 },
+  { key: 4, name: "Valmis",            short: "OK", color: "#e8c56a", bg: "#7a5c1e", desc: "Maalattu ja valmis!", verb: null,                  min: 0 },
 ];
 
 const SYSTEMS = [
@@ -57,16 +70,27 @@ const SYSTEMS = [
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 const KNOWN_EMAILS_KEY = "maalausurakka-profiilit";
+const LOG_CAP = 4000;
+const HEATMAP_WEEKS = 24;
+
+/* ---------- päivämääräapurit (paikallinen aika, viikko alkaa maanantaista) ---------- */
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const startOfWeek = (d) => { const x = startOfDay(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const fiDate = (d) => `${d.getDate()}.${d.getMonth() + 1}.`;
+const MONTHS_FI = ["tammi", "helmi", "maalis", "huhti", "touko", "kesä", "heinä", "elo", "syys", "loka", "marras", "joulu"];
 
 /* ---------- tyylipohjat ---------- */
 const S = {
   input: { background: "#17130f", border: "1px solid #4a3c28", borderRadius: 8, padding: "11px 12px", color: "#efe6d3", fontSize: 15, fontFamily: "inherit", boxSizing: "border-box", width: "100%" },
   gold: { background: "linear-gradient(135deg,#7a5c1e,#9c7c34)", border: "1px solid #e8c56a", borderRadius: 8, padding: "11px 14px", color: "#fff8e6", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" },
   ghost: { background: "none", border: "none", color: "#9c7c34", fontSize: 13, cursor: "pointer", padding: 4, textDecoration: "underline", fontFamily: "inherit" },
+  panel: { background: "#211b15", border: "1px solid #3a2f22", borderRadius: 12, padding: 16 },
 };
 
 /* ---------- Anthropic API ---------- */
-async function callClaude(apiKey, prompt) {
+async function callClaude(apiKey, prompt, model) {
   if (!apiKey) throw new Error("NO_API_KEY");
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -77,10 +101,10 @@ async function callClaude(apiKey, prompt) {
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model,
       max_tokens: 2000,
       messages: [{ role: "user", content: prompt }],
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: MAX_SEARCHES }],
     }),
   });
   if (response.status === 401 || response.status === 403) throw new Error("BAD_API_KEY");
@@ -104,7 +128,7 @@ Rules:
 - List up to 12 matches, most relevant first.
 - "system" MUST be exactly one of: ${SYSTEMS.filter(s => s !== "Muu").map(s => `"${s}"`).join(", ")}. If unsure, pick the closest.
 - Only physical miniature products (boxes, blisters), not paints, books or accessories.
-- If nothing matches: {"found": false}`);
+- If nothing matches: {"found": false}`, MODEL_SEARCH);
 
 const fetchProductContents = (apiKey, productName, system) => callClaude(apiKey, `You are a Games Workshop / Warhammer product content lookup. Find EXACTLY what individual miniatures the following boxed product contains. Use web search to verify the box contents.
 
@@ -117,25 +141,13 @@ Rules:
 - "count" is the number of individual physical miniatures of that type in the box.
 - Split different model types into separate entries (e.g. 1 character + 10 infantry + 3 bikes = 3 entries).
 - Unit names in English (official names).
-- If contents cannot be determined: {"found": false}`);
-
-/* ---------- Motivaatioviestit ---------- */
-function motivationLine(pct, total, done, name) {
-  if (total === 0) return "Lisää ensimmäinen tuote ja urakka alkaa.";
-  if (pct >= 100) return "Koko urakka valmis. Pöytä odottaa — For the Emperor!";
-  if (pct >= 90) return "Loppusuora häämöttää. Viimeiset vedot!";
-  if (pct >= 75) return "Kolme neljäsosaa takana. Armeija alkaa hohtaa.";
-  if (pct >= 50) return "Puoliväli ohitettu! Momentum on puolellasi.";
-  if (pct >= 25) return "Neljännes valmiina. Harmaa vuori kutistuu.";
-  if (done > 0) return `${done} miniä valmiina. Jokainen sivellinveto vie eteenpäin.`;
-  return "Harmaa legioona odottaa. Yksi mini kerrallaan.";
-}
+- If contents cannot be determined: {"found": false}`, MODEL_CONTENTS);
 
 /* ============================================================
    KIRJAUTUMISNÄKYMÄ
    ============================================================ */
 function AuthScreen() {
-  const [mode, setMode] = useState("in"); // in | up
+  const [mode, setMode] = useState("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -167,8 +179,7 @@ function AuthScreen() {
     try {
       if (mode === "up") {
         const { data, error } = await supa.auth.signUp({
-          email: email.trim(),
-          password,
+          email: email.trim(), password,
           options: { data: { display_name: name.trim() || email.split("@")[0] } },
         });
         if (error) throw error;
@@ -199,22 +210,16 @@ function AuthScreen() {
           </h1>
         </div>
 
-        <div style={{ background: "#211b15", border: "1px solid #3a2f22", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-          {mode === "up" && (
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Profiilin nimi (esim. Jani)" style={S.input} />
-          )}
+        <div style={{ ...S.panel, display: "flex", flexDirection: "column", gap: 10 }}>
+          {mode === "up" && <input value={name} onChange={e => setName(e.target.value)} placeholder="Profiilin nimi (esim. Jani)" style={S.input} />}
           <input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="Sähköposti" style={S.input} />
           <input type="password" autoComplete={mode === "up" ? "new-password" : "current-password"} value={password}
-            onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()}
-            placeholder="Salasana" style={S.input} />
-
+            onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Salasana" style={S.input} />
           <button onClick={submit} disabled={busy} style={{ ...S.gold, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
             {busy ? "Hetki…" : mode === "in" ? "Kirjaudu" : "Luo profiili"}
           </button>
-
           {err && <p style={{ color: "#d98a8a", fontSize: 13, margin: 0 }}>{err}</p>}
           {msg && <p style={{ color: "#8fae7a", fontSize: 13, margin: 0 }}>{msg}</p>}
-
           <button onClick={() => { setMode(mode === "in" ? "up" : "in"); setErr(null); setMsg(null); }} style={{ ...S.ghost, alignSelf: "center" }}>
             {mode === "in" ? "Ei vielä profiilia? Luo uusi" : "Onko jo profiili? Kirjaudu sisään"}
           </button>
@@ -244,11 +249,96 @@ function AuthScreen() {
 }
 
 /* ============================================================
+   PIENET KOMPONENTIT
+   ============================================================ */
+function Chevron({ open, color = "#9c7c34" }) {
+  return (
+    <span aria-hidden="true" style={{
+      display: "inline-block", width: 0, height: 0, flexShrink: 0,
+      borderLeft: "5px solid transparent", borderRight: "5px solid transparent",
+      borderTop: `6px solid ${color}`,
+      transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+      transition: "transform .18s ease",
+    }} />
+  );
+}
+
+/* vaihejakauman palkki — sama esitys sekä kokonaisuudelle että yksittäiselle tuotteelle */
+function StageBar({ perStage, total, height = 12 }) {
+  return (
+    <div style={{
+      display: "flex", height, borderRadius: height / 2, overflow: "hidden",
+      background: "#2c251c", border: "1px solid #3a2f22",
+    }}>
+      {STAGES.map(st => (perStage[st.key] > 0 && total > 0) ? (
+        <div key={st.key} title={`${st.name}: ${perStage[st.key]}`} style={{
+          width: `${(perStage[st.key] / total) * 100}%`,
+          background: st.key === 0 ? "transparent" : st.color,
+          opacity: st.key === 0 ? 0 : 0.9,
+        }} />
+      ) : null)}
+    </div>
+  );
+}
+
+/* ============================================================
+   LÄMPÖKARTTA
+   ============================================================ */
+function Heatmap({ byDay }) {
+  const today = startOfDay(new Date());
+  const firstCol = addDays(startOfWeek(today), -(HEATMAP_WEEKS - 1) * 7);
+
+  const shade = (n) => {
+    if (!n) return "#241d16";
+    if (n <= 2) return "#5a4520";
+    if (n <= 5) return "#8a6b2c";
+    if (n <= 10) return "#c9a554";
+    return "#e8c56a";
+  };
+
+  const cols = [];
+  for (let w = 0; w < HEATMAP_WEEKS; w++) {
+    const weekStart = addDays(firstCol, w * 7);
+    const cells = [];
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d);
+      const future = date > today;
+      const n = byDay.get(dayKey(date)) || 0;
+      cells.push(
+        <div key={d}
+          title={future ? "" : `${fiDate(date)} — ${n} ${n === 1 ? "askel" : "askelta"}`}
+          style={{
+            width: 12, height: 12, borderRadius: 2,
+            background: future ? "transparent" : shade(n),
+            border: future ? "none" : `1px solid ${n ? "transparent" : "#2c251c"}`,
+            boxSizing: "border-box",
+          }} />
+      );
+    }
+    // kuukauden vaihtuminen -> otsikko sarakkeen päälle
+    const label = weekStart.getDate() <= 7 ? MONTHS_FI[weekStart.getMonth()] : "";
+    cols.push(
+      <div key={w} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <div style={{ height: 11, fontSize: 9, color: "#6e5f4d", whiteSpace: "nowrap", lineHeight: "11px" }}>{label}</div>
+        {cells}
+      </div>
+    );
+  }
+
+  return (
+    <div className="hm" style={{ overflowX: "auto", paddingBottom: 4 }}>
+      <div style={{ display: "flex", gap: 3, minWidth: "min-content" }}>{cols}</div>
+    </div>
+  );
+}
+
+/* ============================================================
    PÄÄNÄKYMÄ
    ============================================================ */
 function Tracker({ session, onSignOut }) {
   const userId = session.user.id;
   const [products, setProducts] = useState([]);
+  const [log, setLog] = useState([]);
   const [profileName, setProfileName] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -257,36 +347,44 @@ function Tracker({ session, onSignOut }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [matches, setMatches] = useState(null);
-  const [fetchingId, setFetchingId] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [selected, setSelected] = useState([]);   // valitut hakutulokset
+  const [batch, setBatch] = useState(null);       // {done, total, name} kun sisältöjä haetaan
+  const [queue, setQueue] = useState([]);         // vahvistusjono
+  const [queueIdx, setQueueIdx] = useState(0);
+  const [failed, setFailed] = useState([]);       // tuotteet joiden sisältö ei selvinnyt
   const [brush, setBrush] = useState(null);
   const [celebrate, setCelebrate] = useState(null);
   const [manualOpen, setManualOpen] = useState(false);
-  const [manual, setManual] = useState({ product: "", unit: "", count: 5, system: SYSTEMS[0] });
+  const [manual, setManual] = useState({ product: "", system: SYSTEMS[0], units: [{ id: uid(), name: "", count: 5 }] });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draftKey, setDraftKey] = useState("");
   const [draftName, setDraftName] = useState("");
   const [settingsMsg, setSettingsMsg] = useState(null);
+  const [suggIdx, setSuggIdx] = useState(0);
+  const [flash, setFlash] = useState(null);
+  const [closedCats, setClosedCats] = useState([]); // tyhjä = kaikki kategoriat auki
+  const [openProds, setOpenProds] = useState([]);   // tyhjä = kaikki tuotteet kiinni
   const skipSave = useRef(true);
   const saveTimer = useRef(null);
+  const uiKey = "maalausurakka-ui-" + userId;
 
   /* ---- lataus ---- */
   useEffect(() => {
     (async () => {
       try {
         const { data, error } = await supa.from("profiles")
-          .select("display_name, anthropic_key, data").eq("id", userId).maybeSingle();
+          .select("display_name, anthropic_key, data, log").eq("id", userId).maybeSingle();
         if (error) throw error;
         if (data) {
           setProducts(Array.isArray(data.data) ? data.data : []);
+          setLog(Array.isArray(data.log) ? data.log : []);
           setProfileName(data.display_name || session.user.email);
           setApiKey(data.anthropic_key || "");
           setDraftKey(data.anthropic_key || "");
           setDraftName(data.display_name || "");
         } else {
-          // rivi puuttuu (esim. trigger ei ollut voimassa) — luodaan se
           const fallback = session.user.user_metadata?.display_name || session.user.email.split("@")[0];
-          await supa.from("profiles").insert({ id: userId, display_name: fallback, data: [] });
+          await supa.from("profiles").insert({ id: userId, display_name: fallback, data: [], log: [] });
           setProfileName(fallback);
           setDraftName(fallback);
         }
@@ -300,6 +398,25 @@ function Tracker({ session, onSignOut }) {
     })();
   }, [userId]);
 
+  /* ---- haitareiden tila: paikallinen käyttöliittymämuisti, ei osa dataa ---- */
+  useEffect(() => {
+    try {
+      const ui = JSON.parse(localStorage.getItem(uiKey) || "{}");
+      if (Array.isArray(ui.closedCats)) setClosedCats(ui.closedCats);
+      if (Array.isArray(ui.openProds)) setOpenProds(ui.openProds);
+    } catch (e) {}
+  }, [uiKey]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem(uiKey, JSON.stringify({ closedCats, openProds })); } catch (e) {}
+  }, [closedCats, openProds, loaded, uiKey]);
+
+  const catOpen = (sys) => !closedCats.includes(sys);
+  const prodOpen = (pid) => openProds.includes(pid);
+  const toggleCat = (sys) => setClosedCats(prev => prev.includes(sys) ? prev.filter(x => x !== sys) : [...prev, sys]);
+  const toggleProd = (pid) => setOpenProds(prev => prev.includes(pid) ? prev.filter(x => x !== pid) : [...prev, pid]);
+
   /* ---- tallennus (debounce) ---- */
   useEffect(() => {
     if (!loaded) return;
@@ -309,7 +426,7 @@ function Tracker({ session, onSignOut }) {
     saveTimer.current = setTimeout(async () => {
       try {
         const { error } = await supa.from("profiles")
-          .update({ data: products, updated_at: new Date().toISOString() }).eq("id", userId);
+          .update({ data: products, log, updated_at: new Date().toISOString() }).eq("id", userId);
         if (error) throw error;
         setSyncState("synced");
       } catch (e) {
@@ -318,7 +435,7 @@ function Tracker({ session, onSignOut }) {
       }
     }, 800);
     return () => clearTimeout(saveTimer.current);
-  }, [products, loaded, userId]);
+  }, [products, log, loaded, userId]);
 
   const saveSettings = async () => {
     setSettingsMsg(null);
@@ -331,9 +448,7 @@ function Tracker({ session, onSignOut }) {
       setProfileName(draftName.trim() || session.user.email);
       setSettingsMsg("Tallennettu.");
       setTimeout(() => setSettingsMsg(null), 2500);
-    } catch (e) {
-      setSettingsMsg("Tallennus epäonnistui.");
-    }
+    } catch (e) { setSettingsMsg("Tallennus epäonnistui."); }
   };
 
   /* ---- tilastot ---- */
@@ -346,6 +461,46 @@ function Tracker({ session, onSignOut }) {
     return { total, done, pct: total ? Math.round((sum / (total * 4)) * 100) : 0, perStage };
   }, [products]);
 
+  /* ---- momentum: lokista laskettu ---- */
+  const momentum = useMemo(() => {
+    const byDay = new Map();
+    let thisWeek = 0, lastWeek = 0, today = 0;
+    const now = new Date();
+    const wk0 = startOfWeek(now).getTime();
+    const wkPrev = addDays(startOfWeek(now), -7).getTime();
+    const todayKey = dayKey(now);
+
+    log.forEach(e => {
+      if (!(e.s > e.f)) return;           // vain eteenpäin, ei korjauksia eikä 4→0-kiertoa
+      const n = e.n || 1;
+      const d = new Date(e.t);
+      const k = dayKey(d);
+      byDay.set(k, (byDay.get(k) || 0) + n);
+      if (k === todayKey) today += n;
+      if (e.t >= wk0) thisWeek += n;
+      else if (e.t >= wkPrev) lastWeek += n;
+    });
+
+    // putki
+    const cur = startOfDay(now);
+    if (!byDay.has(dayKey(cur))) cur.setDate(cur.getDate() - 1);
+    let streak = 0;
+    while (byDay.has(dayKey(cur))) { streak++; cur.setDate(cur.getDate() - 1); }
+
+    // pisin putki
+    const keys = [...byDay.keys()].sort();
+    let best = 0, run = 0, prev = null;
+    keys.forEach(k => {
+      const d = new Date(k + "T00:00:00");
+      run = (prev && (d - prev) === 86400000) ? run + 1 : 1;
+      if (run > best) best = run;
+      prev = d;
+    });
+
+    const totalSteps = [...byDay.values()].reduce((a, b) => a + b, 0);
+    return { byDay, thisWeek, lastWeek, today, streak, best, totalSteps, activeToday: today > 0 };
+  }, [log]);
+
   const grouped = useMemo(() => {
     const map = new Map();
     products.forEach(p => {
@@ -356,6 +511,39 @@ function Tracker({ session, onSignOut }) {
     return SYSTEMS.filter(s => map.has(s)).map(s => ({ system: s, items: map.get(s) }));
   }, [products]);
 
+  /* ---- ehdotukset: pienin keskeneräinen erä ---- */
+  const suggestions = useMemo(() => {
+    const cands = [];
+    products.forEach(p => p.units.forEach(u => {
+      const counts = [0, 0, 0, 0];
+      u.minis.forEach(s => { if (s < 4) counts[s]++; });
+      counts.forEach((n, stage) => {
+        if (!n) return;
+        const est = Math.max(5, Math.round((n * STAGES[stage].min) / 5) * 5);
+        cands.push({ pid: p.id, product: p.name, unit: u.name, stage, n, est });
+      });
+    }));
+    // kesken olevat ennen koskemattomia, sitten nopein ensin
+    cands.sort((a, b) => (a.stage === 0) - (b.stage === 0) || a.est - b.est);
+    return cands;
+  }, [products]);
+
+  const suggestion = suggestions.length ? suggestions[suggIdx % suggestions.length] : null;
+
+  const goToProduct = (pid) => {
+    // avaa sekä kategoria että tuote ennen vieritystä
+    const p = products.find(x => x.id === pid);
+    const sys = p && SYSTEMS.includes(p.system) ? p.system : "Muu";
+    setClosedCats(prev => prev.filter(x => x !== sys));
+    setOpenProds(prev => prev.includes(pid) ? prev : [...prev, pid]);
+    setFlash(pid);
+    setTimeout(() => setFlash(null), 2100);
+    // odota renderöinti, vieritä vasta sitten
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById("prod-" + pid)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }));
+  };
+
   /* ---- haku ---- */
   const humanError = (e) => {
     if (e.message === "NO_API_KEY") return "Tältä profiililta puuttuu Anthropic API -avain. Lisää se asetuksista (⚙).";
@@ -365,7 +553,7 @@ function Tracker({ session, onSignOut }) {
 
   const doSearch = async () => {
     if (!query.trim() || searching) return;
-    setSearching(true); setSearchError(null); setMatches(null); setPreview(null);
+    setSearching(true); setSearchError(null); setMatches(null); setSelected([]); setFailed([]); setQueue([]);
     try {
       const result = await searchProducts(apiKey, query.trim());
       if (result.found && Array.isArray(result.matches) && result.matches.length) {
@@ -378,72 +566,155 @@ function Tracker({ session, onSignOut }) {
     setSearching(false);
   };
 
-  const pickMatch = async (m) => {
-    if (fetchingId) return;
-    setFetchingId(m.id); setSearchError(null);
-    try {
-      const result = await fetchProductContents(apiKey, m.product, m.system);
-      if (result.found && Array.isArray(result.units) && result.units.length) {
-        setPreview({
-          product: m.product, system: m.system, faction: m.faction,
-          units: result.units.map(u => ({ name: u.name || "Miniatyyri", count: Math.max(1, Math.min(200, parseInt(u.count) || 1)) })),
-        });
-        setMatches(null);
-      } else setSearchError(`Tuotteen "${m.product}" sisältöä ei saatu selville. Voit lisätä sen käsin.`);
-    } catch (e) { setSearchError(humanError(e)); }
-    setFetchingId(null);
+  const clampCount = (v) => Math.max(1, Math.min(200, parseInt(v) || 1));
+  const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const allSelected = matches && selected.length === matches.length;
+
+  /* ---- hae kaikkien valittujen sisältö, yksi kerrallaan ---- */
+  const fetchSelected = async () => {
+    if (!matches || !selected.length || batch) return;
+    const picks = matches.filter(m => selected.includes(m.id));
+    setSearchError(null); setFailed([]);
+    const got = [], bad = [];
+    for (let i = 0; i < picks.length; i++) {
+      const m = picks[i];
+      setBatch({ done: i, total: picks.length, name: m.product });
+      try {
+        const r = await fetchProductContents(apiKey, m.product, m.system);
+        if (r.found && Array.isArray(r.units) && r.units.length) {
+          got.push({
+            product: m.product, system: m.system, faction: m.faction,
+            units: r.units.map(u => ({ id: uid(), name: u.name || "Miniatyyri", count: clampCount(u.count) })),
+          });
+        } else bad.push(m.product);
+      } catch (e) {
+        bad.push(m.product);
+        if (e.message === "NO_API_KEY" || e.message === "BAD_API_KEY") {
+          setSearchError(humanError(e));
+          break; // avainvika ei korjaannu yrittämällä loput
+        }
+      }
+    }
+    setBatch(null);
+    setFailed(bad);
+    if (got.length) { setQueue(got); setQueueIdx(0); setMatches(null); setSelected([]); }
   };
 
-  const addPreview = () => {
-    if (!preview) return;
-    setProducts(prev => [{
-      id: uid(), name: preview.product, faction: preview.faction, system: preview.system,
-      units: preview.units.map(u => ({ id: uid(), name: u.name, minis: Array(u.count).fill(0) })),
-    }, ...prev]);
-    setPreview(null); setQuery("");
+  /* ---- vahvistusjono ---- */
+  const current = queue[queueIdx] || null;
+  const advance = () => {
+    if (queueIdx + 1 >= queue.length) { setQueue([]); setQueueIdx(0); }
+    else setQueueIdx(i => i + 1);
   };
+  const patchQueueUnit = (rowId, patch) => setQueue(q => q.map((it, i) =>
+    i !== queueIdx ? it : { ...it, units: it.units.map(u => u.id === rowId ? { ...u, ...patch } : u) }));
+  const removeQueueUnit = (rowId) => setQueue(q => q.map((it, i) =>
+    i !== queueIdx ? it : { ...it, units: it.units.filter(u => u.id !== rowId) }));
+  const addQueueUnit = () => setQueue(q => q.map((it, i) =>
+    i !== queueIdx ? it : { ...it, units: [...it.units, { id: uid(), name: "", count: 1 }] }));
+
+  const confirmCurrent = () => {
+    if (!current) return;
+    const units = current.units
+      .map(u => ({ name: u.name.trim(), count: clampCount(u.count) }))
+      .filter(u => u.name);
+    if (units.length) {
+      setProducts(prev => [{
+        id: uid(), name: current.product, faction: current.faction, system: current.system,
+        units: units.map(u => ({ id: uid(), name: u.name, minis: Array(u.count).fill(0) })),
+      }, ...prev]);
+      setSuggIdx(0);
+    }
+    advance();
+  };
+
+  /* ---- käsinlisäys: useita miniatyyririvejä ---- */
+  const blankRow = () => ({ id: uid(), name: "", count: 5 });
+  const setManualRow = (id, patch) => setManual(m => ({ ...m, units: m.units.map(u => u.id === id ? { ...u, ...patch } : u) }));
+  const addManualRow = () => setManual(m => ({ ...m, units: [...m.units, blankRow()] }));
+  const removeManualRow = (id) => setManual(m => m.units.length > 1 ? { ...m, units: m.units.filter(u => u.id !== id) } : m);
+
+  const manualRows = manual.units
+    .map(u => ({ name: u.name.trim(), count: Math.max(1, Math.min(200, parseInt(u.count) || 1)) }))
+    .filter(u => u.name);
+  const manualTotal = manualRows.reduce((a, u) => a + u.count, 0);
+  const manualValid = manual.product.trim() && manualRows.length > 0;
 
   const addManual = () => {
-    if (!manual.product.trim() || !manual.unit.trim()) return;
-    const count = Math.max(1, Math.min(200, parseInt(manual.count) || 1));
+    if (!manualValid) return;
     setProducts(prev => [{
       id: uid(), name: manual.product.trim(), faction: "", system: manual.system,
-      units: [{ id: uid(), name: manual.unit.trim(), minis: Array(count).fill(0) }],
+      units: manualRows.map(u => ({ id: uid(), name: u.name, minis: Array(u.count).fill(0) })),
     }, ...prev]);
-    setManual({ product: "", unit: "", count: 5, system: manual.system });
-    setManualOpen(false);
+    setManual({ product: "", system: manual.system, units: [blankRow()] });
+    setManualOpen(false); setSuggIdx(0);
+  };
+
+  /* ---- ydin: vaiheen muutos + lokitus ---- */
+  const applyChanges = (pid, unitId, changes) => {
+    // changes: [{ idx, from, to }]
+    const real = changes.filter(c => c.to !== c.from);
+    if (!real.length) return;
+    const p = products.find(x => x.id === pid);
+    const u = p.units.find(x => x.id === unitId);
+
+    const wasDone = p.units.every(x => x.minis.every(s => s === 4));
+    const nextProducts = products.map(x => x.id !== pid ? x : {
+      ...x, units: x.units.map(y => {
+        if (y.id !== unitId) return y;
+        const minis = [...y.minis];
+        real.forEach(c => { minis[c.idx] = c.to; });
+        return { ...y, minis };
+      }),
+    });
+    const np = nextProducts.find(x => x.id === pid);
+    const isDone = np.units.every(x => x.minis.every(s => s === 4));
+
+    // ryhmitä lokimerkinnät (from,to)-pareittain
+    const t = Date.now();
+    const groups = new Map();
+    real.forEach(c => {
+      const k = c.from + ">" + c.to;
+      groups.set(k, (groups.get(k) || 0) + 1);
+    });
+    const entries = [...groups.entries()].map(([k, n]) => {
+      const [f, s] = k.split(">").map(Number);
+      return { t, p: p.name, u: u.name, f, s, n };
+    });
+
+    setProducts(nextProducts);
+    setLog(prev => [...prev, ...entries].slice(-LOG_CAP));
+    setSuggIdx(0);
+    if (isDone && !wasDone) {
+      setCelebrate(p.name);
+      setTimeout(() => setCelebrate(null), 4000);
+    }
   };
 
   const setMini = (pid, unitId, idx) => {
-    setProducts(prev => {
-      let completed = null;
-      const next = prev.map(p => {
-        if (p.id !== pid) return p;
-        const wasDone = p.units.every(u => u.minis.every(s => s === 4));
-        const np = { ...p, units: p.units.map(u => {
-          if (u.id !== unitId) return u;
-          const minis = [...u.minis];
-          minis[idx] = brush === null ? (minis[idx] + 1) % 5 : brush;
-          return { ...u, minis };
-        }) };
-        const isDone = np.units.every(u => u.minis.every(s => s === 4));
-        if (isDone && !wasDone && np.units.some(u => u.minis.length)) completed = np.name;
-        return np;
-      });
-      if (completed) { setCelebrate(completed); setTimeout(() => setCelebrate(null), 4000); }
-      return next;
-    });
+    const p = products.find(x => x.id === pid);
+    const u = p?.units.find(x => x.id === unitId);
+    if (!u) return;
+    const from = u.minis[idx];
+    const to = brush === null ? (from + 1) % 5 : brush;
+    applyChanges(pid, unitId, [{ idx, from, to }]);
   };
 
-  const setAllInUnit = (pid, unitId, stage) => setProducts(prev => prev.map(p => p.id !== pid ? p : {
-    ...p, units: p.units.map(u => u.id !== unitId ? u : { ...u, minis: u.minis.map(() => stage) }),
-  }));
+  const setAllInUnit = (pid, unitId) => {
+    const p = products.find(x => x.id === pid);
+    const u = p?.units.find(x => x.id === unitId);
+    if (!u) return;
+    const target = brush === null ? Math.min(4, Math.min(...u.minis) + 1) : brush;
+    applyChanges(pid, unitId, u.minis.map((from, idx) => ({ idx, from, to: target })));
+  };
 
   const setSystem = (pid, system) => setProducts(prev => prev.map(p => (p.id === pid ? { ...p, system } : p)));
 
   const removeProduct = (pid) => {
-    if (!window.confirm("Poistetaanko tuote ja sen miniatyyrit seurannasta?")) return;
+    if (!window.confirm("Poistetaanko tuote ja sen miniatyyrit seurannasta? Loki ja putki säilyvät.")) return;
     setProducts(prev => prev.filter(p => p.id !== pid));
+    setOpenProds(prev => prev.filter(x => x !== pid));
+    setSuggIdx(0);
   };
 
   const syncLabel = {
@@ -452,6 +723,8 @@ function Tracker({ session, onSignOut }) {
     saving:  { txt: "● Tallennetaan…", color: "#d9b34b" },
     error:   { txt: "● Tallennus ei onnistu — tarkista yhteys", color: "#d98a8a" },
   }[syncState];
+
+  const weekDelta = momentum.thisWeek - momentum.lastWeek;
 
   /* ============================ UI ============================ */
   return (
@@ -501,15 +774,14 @@ function Tracker({ session, onSignOut }) {
 
         {/* ---------- ASETUKSET ---------- */}
         {settingsOpen && (
-          <section className="card-in" style={{ background: "#211b15", border: "1px solid #4a3c28", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+          <section className="card-in" style={{ ...S.panel, border: "1px solid #4a3c28", padding: 14, marginBottom: 16 }}>
             <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: 15, margin: "0 0 10px", color: "#c9a554" }}>Profiilin asetukset</h2>
             <label style={{ fontSize: 13, color: "#a89a83", display: "block", marginBottom: 4 }}>Profiilin nimi</label>
             <input value={draftName} onChange={e => setDraftName(e.target.value)} style={{ ...S.input, marginBottom: 12 }} />
             <label style={{ fontSize: 13, color: "#a89a83", display: "block", marginBottom: 4 }}>Anthropic API -avain (tuotehakua varten)</label>
             <input type="password" value={draftKey} onChange={e => setDraftKey(e.target.value)} placeholder="sk-ant-…" style={S.input} />
             <p style={{ fontSize: 12, color: "#8a7c66", margin: "6px 0 10px", lineHeight: 1.5 }}>
-              Avain on profiilikohtainen ja tallentuu Supabaseen omalle riviellesi — vain sinä pääset siihen käsiksi, ja se seuraa mukana laitteelta toiselle.
-              Ilman avainta haku ei toimi, mutta käsinlisäys ja seuranta toimivat normaalisti.
+              Avain on profiilikohtainen ja tallentuu Supabaseen omalle riviellesi. Ilman avainta haku ei toimi, mutta käsinlisäys ja seuranta toimivat normaalisti.
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={saveSettings} style={{ background: "#3a2f22", border: "1px solid #5a4930", borderRadius: 8, padding: "9px 14px", color: "#e8c56a", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
@@ -520,23 +792,107 @@ function Tracker({ session, onSignOut }) {
           </section>
         )}
 
+        {/* ---------- TÄNÄÄN: SEURAAVA SIIRTO ---------- */}
+        {suggestion && (
+          <section className="card-in" style={{
+            background: "linear-gradient(135deg,#2a2116,#241d14)", border: "1px solid #7a5c1e",
+            borderRadius: 12, padding: 16, marginBottom: 16,
+          }}>
+            <div style={{ fontSize: 11, color: "#9c7c34", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 8 }}>
+              Seuraava siirto
+            </div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 19, color: "#efe6d3", fontWeight: 700, lineHeight: 1.3 }}>
+              {suggestion.n} × {suggestion.unit}
+            </div>
+            <div style={{ fontSize: 14, color: "#c4b596", marginTop: 3 }}>
+              odottaa {STAGES[suggestion.stage].verb} · noin {suggestion.est} min
+            </div>
+            <div style={{ fontSize: 12, color: "#8a7c66", marginTop: 2 }}>{suggestion.product}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <button onClick={() => goToProduct(suggestion.pid)} style={{ ...S.gold, padding: "9px 16px", fontSize: 14 }}>
+                Näytä
+              </button>
+              {suggestions.length > 1 && (
+                <button onClick={() => setSuggIdx(i => i + 1)} style={{
+                  background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8,
+                  padding: "9px 14px", color: "#a89a83", fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+                }}>Ehdota toinen</button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ---------- MOMENTUM ---------- */}
+        {stats.total > 0 && (
+          <section style={{ ...S.panel, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              {/* putki */}
+              <div style={{ flex: "1 1 100px", background: "#17130f", border: `1px solid ${momentum.streak ? "#5a4930" : "#2c251c"}`, borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color: momentum.streak ? "#e8c56a" : "#5a5248" }}>
+                  {momentum.streak > 0 && "🔥 "}{momentum.streak}
+                </div>
+                <div style={{ fontSize: 11, color: "#8a7c66", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {momentum.streak === 1 ? "päivän putki" : "päivän putki"}
+                </div>
+              </div>
+              {/* tällä viikolla */}
+              <div style={{ flex: "1 1 100px", background: "#17130f", border: "1px solid #2c251c", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color: momentum.thisWeek ? "#c9a554" : "#5a5248" }}>
+                  {momentum.thisWeek}
+                </div>
+                <div style={{ fontSize: 11, color: "#8a7c66", textTransform: "uppercase", letterSpacing: "0.06em" }}>tällä viikolla</div>
+              </div>
+              {/* viime viikolla */}
+              <div style={{ flex: "1 1 100px", background: "#17130f", border: "1px solid #2c251c", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color: "#7d7f85" }}>
+                  {momentum.lastWeek}
+                </div>
+                <div style={{ fontSize: 11, color: "#8a7c66", textTransform: "uppercase", letterSpacing: "0.06em" }}>viime viikolla</div>
+              </div>
+            </div>
+
+            {/* putken tila / viikkovertailu */}
+            <p style={{ fontSize: 13, color: "#c4b596", margin: "0 0 12px", fontStyle: "italic" }}>
+              {momentum.streak > 0 && !momentum.activeToday
+                ? `Putki on ${momentum.streak} päivää — yksi askel tänään pitää sen elossa.`
+                : momentum.activeToday && momentum.today > 0
+                ? `Tänään ${momentum.today} askelta. Putki jatkuu.`
+                : momentum.lastWeek > 0 && momentum.thisWeek === 0
+                ? `Viime viikolla ${momentum.lastWeek} askelta. Tämä viikko odottaa avaustaan.`
+                : weekDelta > 0
+                ? `${weekDelta} askelta enemmän kuin viime viikolla samaan aikaan.`
+                : "Yksikin mini eteenpäin aloittaa putken."}
+            </p>
+
+            <div style={{ fontSize: 11, color: "#6e5f4d", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+              Viimeiset {HEATMAP_WEEKS} viikkoa
+            </div>
+            <Heatmap byDay={momentum.byDay} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, fontSize: 11, color: "#6e5f4d" }}>
+              <span>{momentum.best > 0 ? `Pisin putki: ${momentum.best} pv · yhteensä ${momentum.totalSteps} askelta` : "Ei vielä merkintöjä"}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                vähän
+                {["#241d16", "#5a4520", "#8a6b2c", "#c9a554", "#e8c56a"].map(c => (
+                  <span key={c} style={{ width: 9, height: 9, borderRadius: 2, background: c, display: "inline-block" }} />
+                ))}
+                paljon
+              </span>
+            </div>
+          </section>
+        )}
+
         {/* ---------- EDISTYMINEN ---------- */}
-        <section style={{ background: "#211b15", border: "1px solid #3a2f22", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+        <section style={{ ...S.panel, marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 34, color: "#e8c56a", fontWeight: 700 }}>{stats.pct}%</span>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 30, color: "#e8c56a", fontWeight: 700 }}>{stats.pct}%</span>
             <span style={{ fontSize: 14, color: "#a89a83" }}>{stats.done} / {stats.total} miniä valmiina</span>
           </div>
-          <div style={{ display: "flex", height: 14, borderRadius: 7, overflow: "hidden", background: "#2c251c", border: "1px solid #3a2f22" }}>
-            {STAGES.map(st => stats.perStage[st.key] > 0 && stats.total > 0 ? (
-              <div key={st.key} title={st.name} style={{
-                width: `${(stats.perStage[st.key] / stats.total) * 100}%`,
-                background: st.key === 0 ? "transparent" : st.color, opacity: st.key === 0 ? 0 : 0.9,
-              }} />
-            ) : null)}
-          </div>
-          <p style={{ margin: "10px 0 0", fontSize: 14, color: "#c4b596", fontStyle: "italic" }}>
-            {motivationLine(stats.pct, stats.total, stats.done)}
-          </p>
+          <StageBar perStage={stats.perStage} total={stats.total} height={14} />
+          {stats.total > 0 && (
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: "#8a7c66" }}>
+              Maalaamatta: {stats.total - stats.done} miniä
+            </p>
+          )}
         </section>
 
         {/* ---------- HAKU ---------- */}
@@ -557,68 +913,184 @@ function Tracker({ session, onSignOut }) {
           </button>
 
           {manualOpen && (
-            <div className="card-in" style={{ background: "#211b15", border: "1px solid #3a2f22", borderRadius: 10, padding: 12, marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="card-in" style={{ ...S.panel, borderRadius: 10, padding: 12, marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
               <input value={manual.product} onChange={e => setManual({ ...manual, product: e.target.value })} placeholder="Tuotteen nimi" style={S.input} />
               <select value={manual.system} onChange={e => setManual({ ...manual, system: e.target.value })} style={S.input}>
                 {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={manual.unit} onChange={e => setManual({ ...manual, unit: e.target.value })} placeholder="Miniatyyrin nimi" style={{ ...S.input, flex: 1 }} />
-                <input type="number" min="1" max="200" value={manual.count} onChange={e => setManual({ ...manual, count: e.target.value })} style={{ ...S.input, width: 70, flexShrink: 0 }} />
+
+              <div style={{ fontSize: 11, color: "#6e5f4d", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>
+                Miniatyyrit
               </div>
-              <button onClick={addManual} style={{ background: "#3a2f22", border: "1px solid #5a4930", borderRadius: 8, padding: "10px", color: "#e8c56a", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                Lisää urakkaan
+
+              {manual.units.map((u, i) => (
+                <div key={u.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input value={u.name} onChange={e => setManualRow(u.id, { name: e.target.value })}
+                    onKeyDown={e => { if (e.key === "Enter" && i === manual.units.length - 1) addManualRow(); }}
+                    placeholder={i === 0 ? "Miniatyyrin nimi, esim. Clanrats" : "Miniatyyrin nimi"} style={{ ...S.input, flex: 1 }} />
+                  <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
+                    onChange={e => setManualRow(u.id, { count: e.target.value })}
+                    style={{ ...S.input, width: 68, flexShrink: 0 }} />
+                  <button onClick={() => removeManualRow(u.id)} disabled={manual.units.length === 1}
+                    aria-label="Poista rivi" title="Poista rivi" style={{
+                      background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
+                      color: manual.units.length === 1 ? "#3a2f22" : "#6e5f4d",
+                      fontSize: 18, lineHeight: 1, cursor: manual.units.length === 1 ? "default" : "pointer",
+                    }}>×</button>
+                </div>
+              ))}
+
+              <button onClick={addManualRow} style={{ ...S.ghost, alignSelf: "flex-start", textDecoration: "none", border: "1px dashed #4a3c28", borderRadius: 8, padding: "7px 12px", fontSize: 13 }}>
+                + Lisää miniatyyri
+              </button>
+
+              <button onClick={addManual} disabled={!manualValid} style={{
+                background: manualValid ? "#3a2f22" : "#241d16",
+                border: `1px solid ${manualValid ? "#5a4930" : "#3a2f22"}`, borderRadius: 8, padding: "10px",
+                color: manualValid ? "#e8c56a" : "#5a5248", fontWeight: 700,
+                cursor: manualValid ? "pointer" : "default", fontFamily: "inherit", marginTop: 2,
+              }}>
+                {manualValid ? `Lisää urakkaan (${manualTotal} miniä)` : "Lisää urakkaan"}
               </button>
             </div>
           )}
 
           {searchError && <p style={{ color: "#d98a8a", fontSize: 14, margin: "8px 0 0" }}>{searchError}</p>}
 
-          {matches && (
-            <div className="card-in" style={{ background: "#211b15", border: "1px solid #3a2f22", borderRadius: 12, marginTop: 10, overflow: "hidden" }}>
-              <div style={{ padding: "10px 14px", fontSize: 13, color: "#a89a83", borderBottom: "1px solid #3a2f22" }}>
-                {matches.length} tuotetta löytyi — valitse lisättävä:
+          {failed.length > 0 && (
+            <p style={{ color: "#d9a86a", fontSize: 13, margin: "8px 0 0", lineHeight: 1.5 }}>
+              Sisältöä ei saatu selville: {failed.join(", ")}. Voit lisätä nämä käsin.
+            </p>
+          )}
+
+          {/* ---------- SISÄLTÖJEN ERÄHAKU KÄYNNISSÄ ---------- */}
+          {batch && (
+            <div className="card-in" style={{ ...S.panel, padding: 14, marginTop: 10 }}>
+              <div style={{ fontSize: 14, color: "#efe6d3", marginBottom: 8 }}>
+                ⏳ Haetaan sisältöjä… {batch.done + 1} / {batch.total}
               </div>
-              {matches.map(m => (
-                <button key={m.id} className="match-row" onClick={() => pickMatch(m)} disabled={!!fetchingId} style={{
-                  display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none",
-                  borderBottom: "1px solid #2c251c", padding: "11px 14px", fontFamily: "inherit",
-                  cursor: fetchingId ? "wait" : "pointer", opacity: fetchingId && fetchingId !== m.id ? 0.4 : 1,
-                }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#efe6d3" }}>
-                    {fetchingId === m.id ? "⏳ Haetaan sisältöä… " : ""}{m.product}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#9c7c34" }}>{m.system}{m.faction ? ` · ${m.faction}` : ""}</div>
-                </button>
-              ))}
-              <button onClick={() => setMatches(null)} style={{ display: "block", width: "100%", background: "#1c1712", border: "none", padding: "9px", color: "#8a7c66", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                Sulje tulokset
-              </button>
+              <div style={{ fontSize: 12, color: "#8a7c66", marginBottom: 8 }}>{batch.name}</div>
+              <div style={{ height: 6, borderRadius: 3, background: "#2c251c", overflow: "hidden" }}>
+                <div style={{
+                  width: `${(batch.done / batch.total) * 100}%`, height: "100%",
+                  background: "linear-gradient(90deg,#7a5c1e,#e8c56a)", transition: "width .3s ease",
+                }} />
+              </div>
             </div>
           )}
 
-          {preview && (
+          {/* ---------- HAKUTULOKSET: MONIVALINTA ---------- */}
+          {matches && !batch && (
+            <div className="card-in" style={{ ...S.panel, padding: 0, marginTop: 10, overflow: "hidden" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: "1px solid #3a2f22" }}>
+                <span style={{ fontSize: 13, color: "#a89a83" }}>{matches.length} tuotetta — valitse lisättävät:</span>
+                <button onClick={() => setSelected(allSelected ? [] : matches.map(m => m.id))} style={{ ...S.ghost, fontSize: 12 }}>
+                  {allSelected ? "Tyhjennä" : "Valitse kaikki"}
+                </button>
+              </div>
+
+              {matches.map(m => {
+                const sel = selected.includes(m.id);
+                return (
+                  <button key={m.id} className="match-row" onClick={() => toggleSelect(m.id)} aria-pressed={sel} style={{
+                    display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                    background: sel ? "#2a2216" : "transparent", border: "none",
+                    borderBottom: "1px solid #2c251c", padding: "11px 14px", fontFamily: "inherit", cursor: "pointer",
+                  }}>
+                    <span aria-hidden="true" style={{
+                      width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                      border: `2px solid ${sel ? "#e8c56a" : "#4a3c28"}`,
+                      background: sel ? "#7a5c1e" : "transparent", color: "#fff8e6",
+                      fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>{sel ? "✓" : ""}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: sel ? "#efe6d3" : "#c4b596" }}>{m.product}</span>
+                      <span style={{ fontSize: 12, color: "#9c7c34" }}>{m.system}{m.faction ? ` · ${m.faction}` : ""}</span>
+                    </span>
+                  </button>
+                );
+              })}
+
+              <div style={{ display: "flex", gap: 8, padding: 10, background: "#1c1712" }}>
+                <button onClick={fetchSelected} disabled={!selected.length} style={{
+                  ...S.gold, flex: 1, padding: "10px",
+                  opacity: selected.length ? 1 : 0.4, cursor: selected.length ? "pointer" : "default",
+                }}>
+                  {selected.length ? `Hae sisällöt (${selected.length})` : "Valitse vähintään yksi"}
+                </button>
+                <button onClick={() => { setMatches(null); setSelected([]); }} style={{
+                  background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8,
+                  padding: "10px 14px", color: "#a89a83", cursor: "pointer", fontFamily: "inherit",
+                }}>Sulje</button>
+              </div>
+            </div>
+          )}
+
+          {/* ---------- VAHVISTUSJONO: YKSI TUOTE KERRALLAAN ---------- */}
+          {current && (
             <div className="card-in" style={{ background: "#241d14", border: "1px solid #7a5c1e", borderRadius: 12, padding: 14, marginTop: 10 }}>
-              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 17, color: "#efe6d3", fontWeight: 700 }}>{preview.product}</div>
-              <div style={{ fontSize: 13, color: "#9c7c34", marginBottom: 8 }}>{preview.system}{preview.faction ? ` · ${preview.faction}` : ""}</div>
-              {preview.units.map((u, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 14 }}>
-                  <input type="number" min="1" max="200" value={u.count} onChange={e => {
-                    const units = [...preview.units];
-                    units[i] = { ...u, count: Math.max(1, Math.min(200, parseInt(e.target.value) || 1)) };
-                    setPreview({ ...preview, units });
-                  }} style={{ ...S.input, width: 58, padding: "5px 6px", fontSize: 14, flexShrink: 0 }} />
-                  <span>× {u.name}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
+                <span style={{ fontSize: 11, color: "#9c7c34", textTransform: "uppercase", letterSpacing: "0.14em" }}>
+                  Tarkista määrät
+                </span>
+                {queue.length > 1 && (
+                  <span style={{ fontSize: 12, color: "#8a7c66" }}>{queueIdx + 1} / {queue.length}</span>
+                )}
+              </div>
+
+              {queue.length > 1 && (
+                <div style={{ display: "flex", gap: 3, marginBottom: 10 }}>
+                  {queue.map((_, i) => (
+                    <div key={i} style={{
+                      flex: 1, height: 3, borderRadius: 2,
+                      background: i < queueIdx ? "#7a5c1e" : i === queueIdx ? "#e8c56a" : "#3a2f22",
+                    }} />
+                  ))}
+                </div>
+              )}
+
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 17, color: "#efe6d3", fontWeight: 700 }}>{current.product}</div>
+              <div style={{ fontSize: 13, color: "#9c7c34", marginBottom: 10 }}>
+                {current.system}{current.faction ? ` · ${current.faction}` : ""}
+              </div>
+
+              {current.units.map(u => (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
+                    onChange={e => patchQueueUnit(u.id, { count: e.target.value })}
+                    style={{ ...S.input, width: 62, padding: "7px 8px", fontSize: 14, flexShrink: 0 }} />
+                  <input value={u.name} aria-label="Miniatyyrin nimi"
+                    onChange={e => patchQueueUnit(u.id, { name: e.target.value })}
+                    style={{ ...S.input, flex: 1, padding: "7px 10px", fontSize: 14 }} />
+                  <button onClick={() => removeQueueUnit(u.id)} aria-label="Poista rivi" title="Poista rivi" style={{
+                    background: "none", border: "none", color: "#6e5f4d", fontSize: 18,
+                    lineHeight: 1, cursor: "pointer", padding: "6px 4px", flexShrink: 0,
+                  }}>×</button>
                 </div>
               ))}
-              <p style={{ fontSize: 12, color: "#a89a83", margin: "6px 0 10px" }}>Tarkista lukumäärät — tekoälyhaku voi erehtyä. Voit korjata ne tässä.</p>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={addPreview} style={{ ...S.gold, flex: 1 }}>
-                  Lisää urakkaan ({preview.units.reduce((a, u) => a + u.count, 0)} miniä)
+
+              <button onClick={addQueueUnit} style={{ ...S.ghost, textDecoration: "none", border: "1px dashed #4a3c28", borderRadius: 8, padding: "6px 10px", fontSize: 12, marginTop: 2 }}>
+                + Lisää rivi
+              </button>
+
+              <p style={{ fontSize: 12, color: "#a89a83", margin: "10px 0", lineHeight: 1.5 }}>
+                Vertaa laatikon kylkeen — tekoälyhaku voi erehtyä. Korjaa määrät tai poista ylimääräiset rivit ennen lisäystä.
+              </p>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={confirmCurrent} style={{ ...S.gold, flex: "1 1 160px" }}>
+                  Lisää urakkaan ({current.units.reduce((a, u) => a + clampCount(u.count), 0)} miniä)
                 </button>
-                <button onClick={() => setPreview(null)} style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8, padding: "10px 14px", color: "#a89a83", cursor: "pointer", fontFamily: "inherit" }}>
-                  Peru
-                </button>
+                <button onClick={advance} style={{
+                  background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8,
+                  padding: "10px 14px", color: "#a89a83", cursor: "pointer", fontFamily: "inherit",
+                }}>Ohita</button>
+                {queue.length > 1 && (
+                  <button onClick={() => { setQueue([]); setQueueIdx(0); }} style={{
+                    background: "none", border: "none", color: "#6e5f4d", fontSize: 12,
+                    cursor: "pointer", textDecoration: "underline", fontFamily: "inherit",
+                  }}>Peru loput</button>
+                )}
               </div>
             </div>
           )}
@@ -655,82 +1127,131 @@ function Tracker({ session, onSignOut }) {
           </div>
         )}
 
+        {/* ---------- TUOTELISTAN TYÖKALUT ---------- */}
+        {products.length > 1 && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+            <button onClick={() => setOpenProds(openProds.length ? [] : products.map(p => p.id))} style={{
+              background: "#211b15", border: "1px solid #3a2f22", borderRadius: 8,
+              padding: "6px 12px", color: "#9c7c34", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+            }}>
+              {openProds.length ? "Sulje kaikki" : "Avaa kaikki"}
+            </button>
+          </div>
+        )}
+
         {/* ---------- TUOTTEET KATEGORIOITTAIN ---------- */}
         {grouped.map(({ system, items }) => {
           const cTotal = items.reduce((a, p) => a + p.units.reduce((x, u) => x + u.minis.length, 0), 0);
           const cSum = items.reduce((a, p) => a + p.units.reduce((x, u) => x + u.minis.reduce((y, s) => y + s, 0), 0), 0);
           const cPct = cTotal ? Math.round((cSum / (cTotal * 4)) * 100) : 0;
+          const cOpen = catOpen(system);
           return (
-            <section key={system} style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid #4a3c28", paddingBottom: 6, marginBottom: 12 }}>
-                <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: 16, margin: 0, color: "#c9a554", letterSpacing: "0.06em", textTransform: "uppercase" }}>{system}</h2>
-                <span style={{ fontSize: 13, color: "#a89a83" }}>{cPct}% · {cTotal} miniä</span>
-              </div>
+            <section key={system} style={{ marginBottom: cOpen ? 24 : 10 }}>
+              {/* --- kategorian otsake --- */}
+              <button onClick={() => toggleCat(system)} aria-expanded={cOpen} style={{
+                display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 8,
+                background: "none", border: "none", borderBottom: "1px solid #4a3c28",
+                padding: "0 0 6px", marginBottom: cOpen ? 12 : 0, cursor: "pointer",
+                fontFamily: "inherit", textAlign: "left",
+              }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <Chevron open={cOpen} />
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: 16, color: "#c9a554", letterSpacing: "0.06em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {system}
+                  </span>
+                  <span style={{ fontSize: 12, color: "#6e5f4d", flexShrink: 0 }}>({items.length})</span>
+                </span>
+                <span style={{ fontSize: 13, color: "#a89a83", flexShrink: 0 }}>{cPct}% · {cTotal} miniä</span>
+              </button>
 
-              {items.map(p => {
+              {cOpen && items.map(p => {
                 const pTotal = p.units.reduce((a, u) => a + u.minis.length, 0);
                 const pSum = p.units.reduce((a, u) => a + u.minis.reduce((x, s) => x + s, 0), 0);
+                const pDone = p.units.reduce((a, u) => a + u.minis.filter(s => s === 4).length, 0);
                 const pPct = pTotal ? Math.round((pSum / (pTotal * 4)) * 100) : 0;
                 const pDoneAll = pPct === 100 && pTotal > 0;
+                const pStage = [0, 0, 0, 0, 0];
+                p.units.forEach(u => u.minis.forEach(s => pStage[s]++));
+                const open = prodOpen(p.id);
                 return (
-                  <article key={p.id} className="card-in" style={{
+                  <article key={p.id} id={"prod-" + p.id} className={"card-in" + (flash === p.id ? " flash" : "")} style={{
                     background: "#211b15", border: `1px solid ${pDoneAll ? "#7a5c1e" : "#3a2f22"}`,
-                    borderRadius: 12, padding: 14, marginBottom: 14,
-                    animation: pDoneAll ? "goldpulse 2.5s ease infinite" : undefined,
+                    borderRadius: 12, padding: 12, marginBottom: 10,
+                    animation: pDoneAll && flash !== p.id ? "goldpulse 2.5s ease infinite" : undefined,
                   }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: 17, margin: 0, color: pDoneAll ? "#e8c56a" : "#efe6d3" }}>
-                          {pDoneAll && "★ "}{p.name}
-                        </h3>
-                        {p.faction && <div style={{ fontSize: 12, color: "#9c7c34" }}>{p.faction}</div>}
+                    {/* --- tuotteen otsake: näkyy myös kiinni ollessa --- */}
+                    <button onClick={() => toggleProd(p.id)} aria-expanded={open} style={{
+                      display: "block", width: "100%", background: "none", border: "none",
+                      padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <span style={{ display: "flex", gap: 8, minWidth: 0 }}>
+                          <span style={{ paddingTop: 7 }}><Chevron open={open} color={pDoneAll ? "#e8c56a" : "#9c7c34"} /></span>
+                          <span style={{ minWidth: 0 }}>
+                            <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: 16, margin: 0, color: pDoneAll ? "#e8c56a" : "#efe6d3", lineHeight: 1.3 }}>
+                              {pDoneAll && "★ "}{p.name}
+                            </h3>
+                            {p.faction && <span style={{ fontSize: 12, color: "#9c7c34" }}>{p.faction}</span>}
+                          </span>
+                        </span>
+                        <span style={{ textAlign: "right", flexShrink: 0 }}>
+                          <span style={{ display: "block", fontFamily: "'Cinzel', serif", fontSize: 19, fontWeight: 700, color: pDoneAll ? "#e8c56a" : "#c4b596", lineHeight: 1.1 }}>{pPct}%</span>
+                          <span style={{ fontSize: 11, color: "#8a7c66" }}>{pDone}/{pTotal} valmis</span>
+                        </span>
                       </div>
-                      <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 700, color: pDoneAll ? "#e8c56a" : "#c4b596", flexShrink: 0 }}>{pPct}%</div>
-                    </div>
+                      <div style={{ marginTop: 8 }}>
+                        <StageBar perStage={pStage} total={pTotal} height={8} />
+                      </div>
+                    </button>
 
-                    {p.units.map(u => {
-                      const uDone = u.minis.filter(s => s === 4).length;
-                      return (
-                        <div key={u.id} style={{ marginTop: 12 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: "#d9d2c5" }}>
-                              {u.name} <span style={{ color: "#8a7c66", fontWeight: 400 }}>({uDone}/{u.minis.length} valmis)</span>
-                            </span>
-                            <button onClick={() => setAllInUnit(p.id, u.id, brush === null ? Math.min(4, Math.min(...u.minis) + 1) : brush)}
-                              style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 6, padding: "4px 8px", color: "#c4b596", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                              Sivele kaikki
-                            </button>
-                          </div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                            {u.minis.map((s, i) => {
-                              const st = STAGES[s];
-                              return (
-                                <button key={i} className="mini-chip" onClick={() => setMini(p.id, u.id, i)}
-                                  aria-label={`${u.name} #${i + 1}: ${st.name}`} title={`#${i + 1}: ${st.name} — ${st.desc}`}
-                                  style={{
-                                    width: 34, height: 34, borderRadius: "50%", background: st.bg,
-                                    border: `2px solid ${st.color}`, color: st.color, fontSize: 10, fontWeight: 700,
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    boxShadow: s === 4 ? "0 0 6px rgba(232,197,106,.5)" : "none",
-                                  }}>
-                                  {s === 4 ? "★" : st.short}
+                    {/* --- avattu sisältö --- */}
+                    {open && (
+                      <div className="card-in">
+                        {p.units.map(u => {
+                          const uDone = u.minis.filter(s => s === 4).length;
+                          return (
+                            <div key={u.id} style={{ marginTop: 14 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: "#d9d2c5" }}>
+                                  {u.name} <span style={{ color: "#8a7c66", fontWeight: 400 }}>({uDone}/{u.minis.length} valmis)</span>
+                                </span>
+                                <button onClick={() => setAllInUnit(p.id, u.id)}
+                                  style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 6, padding: "4px 8px", color: "#c4b596", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                                  Sivele kaikki
                                 </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
+                              </div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                                {u.minis.map((s, i) => {
+                                  const st = STAGES[s];
+                                  return (
+                                    <button key={i} className="mini-chip" onClick={() => setMini(p.id, u.id, i)}
+                                      aria-label={`${u.name} #${i + 1}: ${st.name}`} title={`#${i + 1}: ${st.name} — ${st.desc}`}
+                                      style={{
+                                        width: 34, height: 34, borderRadius: "50%", background: st.bg,
+                                        border: `2px solid ${st.color}`, color: st.color, fontSize: 10, fontWeight: 700,
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        boxShadow: s === 4 ? "0 0 6px rgba(232,197,106,.5)" : "none",
+                                      }}>
+                                      {s === 4 ? "★" : st.short}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8 }}>
-                      <select value={SYSTEMS.includes(p.system) ? p.system : "Muu"} onChange={e => setSystem(p.id, e.target.value)}
-                        style={{ background: "#17130f", border: "1px solid #3a2f22", borderRadius: 6, padding: "5px 8px", color: "#8a7c66", fontSize: 12, fontFamily: "inherit" }}>
-                        {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", color: "#6e5f4d", fontSize: 12, cursor: "pointer", padding: 2, textDecoration: "underline", fontFamily: "inherit" }}>
-                        poista tuote
-                      </button>
-                    </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 8 }}>
+                          <select value={SYSTEMS.includes(p.system) ? p.system : "Muu"} onChange={e => setSystem(p.id, e.target.value)}
+                            style={{ background: "#17130f", border: "1px solid #3a2f22", borderRadius: 6, padding: "5px 8px", color: "#8a7c66", fontSize: 12, fontFamily: "inherit" }}>
+                            {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", color: "#6e5f4d", fontSize: 12, cursor: "pointer", padding: 2, textDecoration: "underline", fontFamily: "inherit" }}>
+                            poista tuote
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </article>
                 );
               })}
@@ -765,10 +1286,7 @@ function App() {
 
   useEffect(() => {
     if (!supa) { setReady(true); return; }
-    supa.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setReady(true);
-    });
+    supa.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true); });
     const { data: sub } = supa.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -780,7 +1298,7 @@ function App() {
       <div>
         <h1 style={{ fontFamily: "'Cinzel', serif", color: "#e8c56a", fontSize: 20 }}>Asetukset puuttuvat</h1>
         <p style={{ maxWidth: 380, lineHeight: 1.6, fontSize: 14 }}>
-          Täytä <code style={{ color: "#c9a554" }}>SUPABASE_URL</code> ja <code style={{ color: "#c9a554" }}>SUPABASE_ANON_KEY</code> tiedoston <code style={{ color: "#c9a554" }}>index.html</code> alusta, ja aja <code style={{ color: "#c9a554" }}>supabase-setup.sql</code> Supabasen SQL Editorissa.
+          Täytä <code style={{ color: "#c9a554" }}>SUPABASE_URL</code> ja <code style={{ color: "#c9a554" }}>SUPABASE_ANON_KEY</code> tiedoston <code style={{ color: "#c9a554" }}>index.html</code> alusta.
         </p>
       </div>
     </div>
