@@ -485,6 +485,101 @@ function RecipeEditor({ value, onCommit }) {
   );
 }
 
+/* Yksikön muokkausrivi. Nimi ja määrä tallentuvat vasta kun fokus poistuu tai
+   Enteriä painetaan. Määrän kohdalla tämä ei ole kosmetiikkaa: jos 20 -> 15
+   tallentuisi joka näppäimestä, kenttä näkisi välillä arvon "1" ja 19 miniä
+   edistymisineen katoaisi ennen kuin "5" ehtii perään. Esc peruu. */
+function UnitEditRow({ unit, onRename, onResize, onRemove, canRemove }) {
+  const [name, setName] = useState(unit.name);
+  const [count, setCount] = useState(String(unit.minis.length));
+  const [fName, setFName] = useState(false);
+  const [fCount, setFCount] = useState(false);
+  const nameRef = useRef(null), countRef = useRef(null);
+
+  useEffect(() => { if (!fName) setName(unit.name); }, [unit.name, fName]);
+  useEffect(() => { if (!fCount) setCount(String(unit.minis.length)); }, [unit.minis.length, fCount]);
+
+  const commitName = () => { const v = name.trim(); if (v && v !== unit.name) onRename(v); else setName(unit.name); };
+  const commitCount = () => {
+    const n = Math.max(1, Math.min(200, parseInt(count) || 0));
+    if (n !== unit.minis.length) onResize(n);
+    setCount(String(n));
+  };
+
+  const nameDirty = name.trim() !== unit.name;
+  const countDirty = String(count) !== String(unit.minis.length);
+  const field = (dirty) => ({
+    background: "#17130f", border: `1px solid ${dirty ? "#9c7c34" : "#4a3c28"}`,
+    borderRadius: 6, padding: "6px 8px", color: "#c4b596", fontSize: 13,
+    fontFamily: "inherit", boxSizing: "border-box",
+  });
+
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+      <input
+        ref={countRef} type="number" min="1" max="200" value={count} aria-label="Määrä"
+        onChange={e => setCount(e.target.value)}
+        onFocus={() => setFCount(true)}
+        onBlur={() => { setFCount(false); commitCount(); }}
+        onKeyDown={e => {
+          if (e.key === "Enter") { e.preventDefault(); countRef.current.blur(); }
+          if (e.key === "Escape") { setCount(String(unit.minis.length)); setFCount(false); countRef.current.blur(); }
+        }}
+        style={{ ...field(countDirty), width: 62, flexShrink: 0 }}
+      />
+      <input
+        ref={nameRef} value={name} aria-label="Miniatyyrin nimi"
+        onChange={e => setName(e.target.value)}
+        onFocus={() => setFName(true)}
+        onBlur={() => { setFName(false); commitName(); }}
+        onKeyDown={e => {
+          if (e.key === "Enter") { e.preventDefault(); nameRef.current.blur(); }
+          if (e.key === "Escape") { setName(unit.name); setFName(false); nameRef.current.blur(); }
+        }}
+        style={{ ...field(nameDirty), flex: 1, minWidth: 0 }}
+      />
+      <button
+        onClick={onRemove} disabled={!canRemove}
+        title={canRemove ? "Poista miniatyyri tuotteesta" : "Viimeistä ei voi poistaa — poista koko tuote"}
+        aria-label="Poista miniatyyri"
+        style={{
+          background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
+          color: canRemove ? "#a54040" : "#3a2f22", fontSize: 17, lineHeight: 1,
+          cursor: canRemove ? "pointer" : "default",
+        }}>×</button>
+    </div>
+  );
+}
+
+/* Uuden miniatyyrin lisäys olemassa olevaan tuotteeseen */
+function AddUnitForm({ onAdd }) {
+  const [name, setName] = useState("");
+  const [count, setCount] = useState(5);
+  const valid = name.trim().length > 0;
+  const submit = () => {
+    if (!valid) return;
+    onAdd(name.trim(), Math.max(1, Math.min(200, parseInt(count) || 1)));
+    setName(""); setCount(5);
+  };
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 8 }}>
+      <input type="number" min="1" max="200" value={count} aria-label="Määrä"
+        onChange={e => setCount(e.target.value)}
+        style={{ background: "#17130f", border: "1px dashed #4a3c28", borderRadius: 6, padding: "6px 8px", color: "#c4b596", fontSize: 13, fontFamily: "inherit", width: 62, flexShrink: 0, boxSizing: "border-box" }} />
+      <input value={name} placeholder="Uusi miniatyyri…" aria-label="Uuden miniatyyrin nimi"
+        onChange={e => setName(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") submit(); }}
+        style={{ background: "#17130f", border: "1px dashed #4a3c28", borderRadius: 6, padding: "6px 8px", color: "#c4b596", fontSize: 13, fontFamily: "inherit", flex: 1, minWidth: 0, boxSizing: "border-box" }} />
+      <button onClick={submit} disabled={!valid} aria-label="Lisää miniatyyri" style={{
+        background: valid ? "#3a2f22" : "transparent", border: `1px solid ${valid ? "#5a4930" : "#3a2f22"}`,
+        borderRadius: 6, padding: "6px 10px", color: valid ? "#e8c56a" : "#3a2f22",
+        fontSize: 13, fontWeight: 700, cursor: valid ? "pointer" : "default",
+        fontFamily: "inherit", flexShrink: 0,
+      }}>+</button>
+    </div>
+  );
+}
+
 /* ============================================================
    LÄMPÖKARTTA
    ============================================================ */
@@ -574,6 +669,7 @@ function Tracker({ session, online, onSignOut }) {
   const [closedFacs, setClosedFacs] = useState([]); // tyhjä = kaikki rodut auki
   const [openProds, setOpenProds] = useState([]);   // tyhjä = kaikki tuotteet kiinni
   const [openRecipes, setOpenRecipes] = useState([]); // avatut maaliohjeet (unit-id)
+  const [editProds, setEditProds] = useState([]);    // tuotteet muokkaustilassa (ei tallenneta)
   const [retry, setRetry] = useState(0);
   const skipSave = useRef(true);
   const saveTimer = useRef(null);
@@ -1047,6 +1143,61 @@ function Tracker({ session, online, onSignOut }) {
   const setRecipe = (pid, unitId, recipe) => setProducts(prev => prev.map(p => p.id !== pid ? p : {
     ...p, units: p.units.map(u => u.id !== unitId ? u : { ...u, recipe }),
   }));
+
+  /* ---- yksikön muokkaus ---- */
+  const renameUnit = (pid, unitId, name) => setProducts(prev => prev.map(p => p.id !== pid ? p : {
+    ...p, units: p.units.map(u => u.id !== unitId ? u : { ...u, name }),
+  }));
+
+  /* Määrän muutos. Kasvatus lisää to-do-minejä perään. Pienennys poistaa
+     VÄHITEN edistyneet ensin, jotta tehty työ säilyy: jos 20:stä on 5 valmiina
+     ja pudotat 15:een, ne 5 eivät katoa. Jäljelle jäävien keskinäinen
+     järjestys säilyy. */
+  const resizeUnit = (pid, unitId, n) => {
+    const p = products.find(x => x.id === pid);
+    const u = p?.units.find(x => x.id === unitId);
+    if (!u) return;
+    const cur = u.minis.length;
+    if (n === cur) return;
+
+    let minis;
+    if (n > cur) {
+      minis = [...u.minis, ...Array(n - cur).fill(0)];
+    } else {
+      const removing = cur - n;
+      const order = u.minis.map((s, i) => ({ s, i })).sort((a, b) => a.s - b.s || a.i - b.i);
+      const kill = new Set(order.slice(0, removing).map(x => x.i));
+      const lost = order.slice(0, removing).filter(x => x.s > 0).length;
+      if (lost > 0 && !window.confirm(
+        `Poistetaan ${removing} miniä yksiköstä "${u.name}".\n\n` +
+        `${lost} niistä on jo aloitettu tai valmis — se edistyminen menetetään. Jatketaanko?`
+      )) return;
+      minis = u.minis.filter((_, i) => !kill.has(i));
+    }
+    setProducts(prev => prev.map(x => x.id !== pid ? x : {
+      ...x, units: x.units.map(y => y.id !== unitId ? y : { ...y, minis }),
+    }));
+    setSuggIdx(0);
+  };
+
+  const removeUnit = (pid, unitId) => {
+    const p = products.find(x => x.id === pid);
+    const u = p?.units.find(x => x.id === unitId);
+    if (!u || p.units.length <= 1) return;
+    const adv = u.minis.filter(s => s > 0).length;
+    const warn = adv > 0 ? `\n\n${adv} minin edistyminen menetetään.` : "";
+    if (!window.confirm(`Poistetaanko "${u.name}" (${u.minis.length} miniä) tuotteesta?${warn}`)) return;
+    setProducts(prev => prev.map(x => x.id !== pid ? x : { ...x, units: x.units.filter(y => y.id !== unitId) }));
+    setOpenRecipes(prev => prev.filter(x => x !== unitId));
+    setSuggIdx(0);
+  };
+
+  const addUnit = (pid, name, count) => {
+    setProducts(prev => prev.map(p => p.id !== pid ? p : {
+      ...p, units: [...p.units, { id: uid(), name, minis: Array(count).fill(0) }],
+    }));
+    setSuggIdx(0);
+  };
 
   const removeProduct = (pid) => {
     if (!window.confirm("Poistetaanko tuote ja sen miniatyyrit seurannasta? Loki ja putki säilyvät.")) return;
@@ -1623,17 +1774,28 @@ function Tracker({ session, online, onSignOut }) {
                                 <div className="card-in">
                                   {p.units.map(u => {
                                     const uDone = u.minis.filter(s => s === 4).length;
+                                    const editing = editProds.includes(p.id);
                                     return (
                                       <div key={u.id} style={{ marginTop: 14 }}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
-                                          <span style={{ fontSize: 14, fontWeight: 700, color: "#d9d2c5" }}>
-                                            {u.name} <span style={{ color: "#8a7c66", fontWeight: 400 }}>({uDone}/{u.minis.length} valmis)</span>
-                                          </span>
-                                          <button onClick={() => setAllInUnit(p.id, u.id)}
-                                            style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 6, padding: "4px 8px", color: "#c4b596", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                                            Sivele kaikki
-                                          </button>
-                                        </div>
+                                        {editing ? (
+                                          <UnitEditRow
+                                            unit={u}
+                                            canRemove={p.units.length > 1}
+                                            onRename={v => renameUnit(p.id, u.id, v)}
+                                            onResize={n => resizeUnit(p.id, u.id, n)}
+                                            onRemove={() => removeUnit(p.id, u.id)}
+                                          />
+                                        ) : (
+                                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+                                            <span style={{ fontSize: 14, fontWeight: 700, color: "#d9d2c5" }}>
+                                              {u.name} <span style={{ color: "#8a7c66", fontWeight: 400 }}>({uDone}/{u.minis.length} valmis)</span>
+                                            </span>
+                                            <button onClick={() => setAllInUnit(p.id, u.id)}
+                                              style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 6, padding: "4px 8px", color: "#c4b596", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                                              Sivele kaikki
+                                            </button>
+                                          </div>
+                                        )}
                                         <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                                           {u.minis.map((s, i) => {
                                             const st = STAGES[s];
@@ -1676,6 +1838,21 @@ function Tracker({ session, online, onSignOut }) {
                                       </div>
                                     );
                                   })}
+
+                                  {/* --- miniatyyrien muokkaus --- */}
+                                  {editProds.includes(p.id) && <AddUnitForm onAdd={(n, c) => addUnit(p.id, n, c)} />}
+
+                                  <button
+                                    onClick={() => setEditProds(prev => prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id])}
+                                    style={{
+                                      marginTop: 12, background: editProds.includes(p.id) ? "#3a2f22" : "none",
+                                      border: `1px ${editProds.includes(p.id) ? "solid" : "dashed"} #4a3c28`,
+                                      borderRadius: 7, padding: "6px 11px",
+                                      color: editProds.includes(p.id) ? "#e8c56a" : "#6e5f4d",
+                                      fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                                    }}>
+                                    {editProds.includes(p.id) ? "✓ Valmis muokkaamasta" : "✎ Muokkaa miniatyyrejä"}
+                                  </button>
 
                                   {/* --- tuotteen sijoitus: järjestelmä + rotu --- */}
                                   <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
