@@ -8,7 +8,7 @@
  * Kun muutat index.html:ää, nosta CACHE-versiota. Muuten selain voi tarjoilla
  * vanhaa runkoa vielä pitkään.
  */
-const CACHE = "maalausurakka-v1";
+const CACHE = "maalausurakka-v3";
 
 /* sovelluksen runko */
 const SHELL = [
@@ -44,6 +44,36 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("message", (e) => {
   if (e.data === "skip-waiting") self.skipWaiting();
+});
+
+/* taustapush: palvelin lähettää, tämä näyttää ilmoituksen vaikka sovellus on kiinni */
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; }
+  catch { d = { title: "Maalausurakka", body: e.data ? e.data.text() : "" }; }
+  const title = d.title || "Maalausurakka";
+  const opts = {
+    body: d.body || "",
+    icon: "icon-192.png",
+    badge: "icon-192.png",
+    tag: d.tag || "maalausurakka-reminder",
+    lang: "fi",
+    renotify: true,
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+/* muistutuksen klikkaus: tuo avoin välilehti eteen tai avaa uusi */
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if ("focus" in c) return c.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("./");
+    })
+  );
 });
 
 self.addEventListener("fetch", (e) => {

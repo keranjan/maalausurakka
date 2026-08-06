@@ -62,6 +62,11 @@ const MODEL_SEARCH = "claude-haiku-4-5-20251001";
 const MODEL_CONTENTS = "claude-haiku-4-5-20251001";
 const MAX_SEARCHES = 2;
 
+/* Taustamuistutusten VAPID-julkinen avain (turvallinen paljastaa).
+   Tyhjä = taustapush ei käytössä, vain paikallinen muistutus toimii.
+   Sama avainpari kuin Edge Functionin salaisuuksissa. */
+const VAPID_PUBLIC_KEY = "BGj0o9zfUS6MirJfp4y-lOwM-IAekSK4y2SfebJ6XoHX-oHZLHmZ30LKa17PovTdqUDICZqzUE5P9v_AyILROko";
+
 const STAGES = [
   { key: 0, name: "To-do",             short: "TD", color: "#7d7f85", bg: "#3a3c41", desc: "Harmaata muovia",   verb: "kasausta",             min: 6 },
   { key: 1, name: "Kasattu",           short: "KA", color: "#9fb4c2", bg: "#41505c", desc: "Kasattu, ei maalia", verb: "pohjamaalia",          min: 2 },
@@ -173,6 +178,60 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
    "High Elves" ovat sama ryhmä; näytettävä nimi otetaan ensimmäisestä osumasta. */
 const NO_FACTION = "Määrittelemätön";
 const facKey = (f) => (f || "").trim().toLowerCase();
+
+/* VAPID-avaimen muunnos push-tilausta varten */
+function urlB64ToU8(base64) {
+  const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+/* ---- muistutusviestit: eri Warhammer-hahmoilta ----
+   who = hahmo (näytetään ilmoituksen otsikkona), b = viesti hänen äänellään.
+   Korit tauon mukaan: lempeä primarkki päivänä 1, kaaosjumala päivänä 5+.
+   {name}=profiili, {grey}=maalaamatta, {next}=seuraava siirto, {streak}=paras putki. */
+const NOTIFY = {
+  soft: [ // 1 päivä — jalot, kannustavat
+    { who: "The Emperor of Mankind", b: "Kultainen valtaistuin näkee kaiken, {name} — myös {grey} maalaamatonta lastasi. Yksi sivellinveto ilahduttaisi Isää." },
+    { who: "Sanguinius", b: "Älä anna epätoivon voittaa, {name}. Jokainen mini on kaunis loppuun saatettuna. Aloita yhdestä." },
+    { who: "Roboute Guilliman", b: "Olen laatinut sinulle suunnitelman: {next}. Tehokkuus alkaa yhdestä vedosta. Ryhdytään töihin." },
+    { who: "Saint Celestine", b: "Valo palaa yhä sinussa, {name}. Anna sen loistaa {grey} odottavalle sielulle. Tartu siveltimeen." },
+    { who: "Belisarius Cawl", b: "Laskelmieni mukaan {next} valmistuisi kymmenessä minuutissa. Kiehtovaa! Kokeillaanko?" },
+    { who: "Ciaphas Cain", b: "Jos minä selvisin hengissä, sinä selviät yhdestä pohjamaalauksesta. {next} odottaa, usko pois." },
+    { who: "Leman Russ", b: "Ei kannata märehtiä, poikaseni. {grey} miniä. Yksi sivellin. Hoida homma." },
+    { who: "Tech-Priest Enginseer", b: "01001101 — Omnissiah suosii ahkeria käsiä. Voitele siveltimesi, {name}. {next} kaipaa huomiota." },
+    { who: "Aun'shi", b: "Suurempi hyvä kutsuu, {name}. Pieni askel kohti valmista armeijaa palvelee kaikkia. Tänään: {next}." },
+    { who: "Lord Castellan Creed", b: "Minä piilotin kokonaisen Baneblade-rykmentin. Sinä et piilota {grey} maalaamatonta miniä. Taktinen isku, nyt." },
+    { who: "Yvraine", b: "Kuolema kuiskaa, mutta väri elää. Herätä {next} henkiin tänään, {name}." },
+  ],
+  mid: [ // 2–4 päivää — ankarat, pilkalliset
+    { who: "Roboute Guilliman", b: "Kaksi päivää ilman edistystä. Tämä tehottomuus olisi raivostuttanut veljeni. {grey} miniä odottaa, {name}." },
+    { who: "Commissar Yarrick", b: "Perääntyminen ei ole vaihtoehto. {grey} sotilasta seisoo harmaana. Palaa riviin — tällä hetkellä." },
+    { who: "Inquisitor Greyfax", b: "Havaitsen laiminlyöntiä. {streak} päivän putkesi katkesi. Selitä itsesi — tai tartu siveltimeen." },
+    { who: "Abaddon the Despoiler", b: "Kolmetoista sotaretkeä minä johdin. Sinä et saa edes {next} valmiiksi. Todista minun olevan väärässä." },
+    { who: "Trazyn the Infinite", b: "Nuo {grey} maalaamatonta yksilöäsi näyttäisivät upeilta kokoelmassani. Ellet maalaa niitä ensin itse..." },
+    { who: "Ghazghkull Thraka", b: "WAAAGH! Vähemmän vändäämistä, enemmän värkkäämistä! {next} ei mäläjää itte! DAKKA!" },
+    { who: "Kharn the Betrayer", b: "En muista ketä vihaan enää. Mutta muistan että {grey} miniäsi ovat yhä harmaita. Korjaa se." },
+    { who: "Typhus", b: "Ruttopadot leviävät hitaudessa. {grey} miniä mätänee harmaudessa. Herätä ne — tai Isoisä tekee sen puolestasi." },
+    { who: "Illuminor Szeras", b: "Edistymisesi on epätyydyttävää dataa. Optimoi. {next} ensin, {name}." },
+    { who: "Eldrad Ulthran", b: "Näen tulevaisuuden: {grey} miniä yhä maalaamatta. Muuta se kohtalo. Tänään." },
+  ],
+  hard: [ // 5+ päivää — grimdark, dramaattiset
+    { who: "Be'lakor", b: "Minut unohdettiin tuhanneksi vuodeksi. Aivan kuten sinä unohdit {grey} sotilastasi. Palaa, {name}." },
+    { who: "Horus Lupercal", b: "Isä hylkäsi minut. Sinä hylkäsit armeijasi. Mutta toisin kuin minä, sinä voit vielä kääntyä takaisin. {next}." },
+    { who: "Bloodthirster of Khorne", b: "VERTA VERENJUMALALLE! Vai… väriä väripöydälle. Kelpaa sekin. NOSTA SIVELLIN, {name}!" },
+    { who: "Grandfather Nurgle", b: "Voi lapsonen, {grey} pientä miniäsi kuihtuvat rakkaudetta. Anna niille väriä — hellästi ja runsaasti." },
+    { who: "Tzeentch", b: "Kaikki on osa suunnitelmaa. Myös se, että maalaat {next} tänään. Vastusta jos uskallat — et voi." },
+    { who: "Magnus the Red", b: "Ylpeys tuhosi minut. Älä anna laiskuuden tuhota sinua. {grey} miniä. Tietosi riittää. Toimi." },
+    { who: "Konrad Curze", b: "Näin ennustuksen: sivellin kuivuu, harmaus voittaa. Pelkäätkö sitä tarpeeksi toimiaksesi, {name}?" },
+    { who: "Mortarion", b: "Kuolema on velvollisuus — niin on maalaaminenkin. {grey} miniä odottaa käsiäsi. Älä petä niitä." },
+    { who: "Angron", b: "RAIVO! Sinun pitäisi olla vihainen noille {grey} maalaamattomalle minille! Kanavoi se siveltimeen!" },
+    { who: "The Void Dragon", b: "Nukuin eoneja planeetan sydämessä. Sinä nukut sohvalla samalla kun {grey} sotilastasi odottaa. Herää." },
+    { who: "Fabius Bile", b: "Armeijasi on raakamateriaalia. Epätäydellistä. Jalosta sitä, {name}. {next} ensin." },
+    { who: "Lucius the Eternal", b: "Niin tylsää, niin harmaata. Nuo {grey} miniäsi eivät tuota minulle nautintoa. Väriä. Heti." },
+  ],
+};
 
 /* laskee vaihejakauman ja prosentin mille tahansa tuotejoukolle */
 function tally(items) {
@@ -670,6 +729,7 @@ function Tracker({ session, online, onSignOut }) {
   const [openProds, setOpenProds] = useState([]);   // tyhjä = kaikki tuotteet kiinni
   const [openRecipes, setOpenRecipes] = useState([]); // avatut maaliohjeet (unit-id)
   const [editProds, setEditProds] = useState([]);    // tuotteet muokkaustilassa (ei tallenneta)
+  const [notifyPerm, setNotifyPerm] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
   const [retry, setRetry] = useState(0);
   const skipSave = useRef(true);
   const saveTimer = useRef(null);
@@ -768,6 +828,60 @@ function Tracker({ session, online, onSignOut }) {
       setSettingsMsg("Tallennettu.");
       setTimeout(() => setSettingsMsg(null), 2500);
     } catch (e) { setSettingsMsg("Tallennus epäonnistui."); }
+  };
+
+  /* ---- push-tilaus: rekisteröi tämä laite palvelimen muistutuksille ---- */
+  const subscribePush = async () => {
+    if (!VAPID_PUBLIC_KEY || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToU8(VAPID_PUBLIC_KEY),
+        });
+      }
+      const json = sub.toJSON();
+      await supa.from("push_subscriptions").upsert(
+        { user_id: userId, endpoint: sub.endpoint, subscription: json },
+        { onConflict: "endpoint" }
+      );
+    } catch (e) {
+      console.warn("Push-tilaus epäonnistui", e);
+    }
+  };
+
+  /* ---- ilmoitusluvan pyyntö ja testi ---- */
+  const enableNotifications = async () => {
+    if (typeof Notification === "undefined") { setNotifyPerm("unsupported"); return; }
+    try {
+      const p = await Notification.requestPermission();
+      setNotifyPerm(p);
+      if (p === "granted") subscribePush();
+    } catch (e) { setNotifyPerm(Notification.permission); }
+  };
+
+  /* jos lupa on jo myönnetty, varmista että tämä laite on tilattuna */
+  useEffect(() => {
+    if (loaded && notifyPerm === "granted") subscribePush();
+    // eslint-disable-next-line
+  }, [loaded]);
+
+  const testNotification = async () => {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const pool = [...NOTIFY.soft, ...NOTIFY.mid, ...NOTIFY.hard];
+    const msg = pool[Math.floor(Math.random() * pool.length)];
+    const grey = stats.total - stats.finished;
+    const fill = (s) => s
+      .replace(/{name}/g, profileName || "soturi")
+      .replace(/{grey}/g, grey || 0)
+      .replace(/{streak}/g, momentum.best || 3)
+      .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "Clanrats");
+    const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-test", lang: "fi" };
+    navigator.serviceWorker?.ready
+      .then(reg => reg.showNotification(fill(msg.who), opts))
+      .catch(() => { try { new Notification(fill(msg.who), opts); } catch (e) {} });
   };
 
   /* ---- tilastot ---- */
@@ -958,6 +1072,47 @@ function Tracker({ session, online, onSignOut }) {
   }, [products]);
 
   const suggestion = suggestions.length ? suggestions[suggIdx % suggestions.length] : null;
+
+  /* ---- paikallinen muistutus ----
+     Ei taustapushia (staattinen hosting ei voi ajaa ajastimia). Sen sijaan:
+     kun sovellus avataan, tarkista onko koko päivä mennyt edellisestä
+     edistyksestä. Jos on, näytä yksi Warhammer-henkinen muistutus — enintään
+     kerran vuorokaudessa, ei ikinä samana päivänä kun on jo maalattu. */
+  useEffect(() => {
+    if (!loaded || products.length === 0) return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+
+    const now = new Date();
+    const todayK = dayKey(now);
+    if (momentum.byDay.has(todayK)) return; // tänään on jo edistytty
+
+    const lastNotifyKey = "maalausurakka-notify-" + userId;
+    if (localStorage.getItem(lastNotifyKey) === todayK) return; // jo muistutettu tänään
+
+    const keys = [...momentum.byDay.keys()].sort();
+    const last = keys.length ? new Date(keys[keys.length - 1] + "T00:00:00") : null;
+    const gap = last ? Math.floor((startOfDay(now) - last) / 86400000) : 1;
+    if (gap < 1) return;
+
+    const pool = gap >= 5 ? NOTIFY.hard : gap >= 2 ? NOTIFY.mid : NOTIFY.soft;
+    const msg = pool[Math.floor(Math.random() * pool.length)];
+    const grey = stats.total - stats.finished;
+    const fill = (s) => s
+      .replace(/{name}/g, profileName || "soturi")
+      .replace(/{grey}/g, grey)
+      .replace(/{streak}/g, momentum.best || gap)
+      .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "urakka");
+
+    const title = fill(msg.who);
+    const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-reminder", lang: "fi" };
+
+    navigator.serviceWorker?.ready
+      .then(reg => reg.showNotification(title, opts))
+      .catch(() => { try { new Notification(title, opts); } catch (e) {} });
+
+    localStorage.setItem(lastNotifyKey, todayK);
+    // eslint-disable-next-line
+  }, [loaded]);
 
   const goToProduct = (pid) => {
     // avaa kategoria, rotu ja tuote ennen vieritystä
@@ -1297,6 +1452,38 @@ function Tracker({ session, online, onSignOut }) {
                 Tallenna
               </button>
               {settingsMsg && <span style={{ fontSize: 13, color: settingsMsg === "Tallennettu." ? "#8fae7a" : "#d98a8a" }}>{settingsMsg}</span>}
+            </div>
+
+            {/* ---- muistutukset ---- */}
+            <div style={{ borderTop: "1px solid #3a2f22", marginTop: 14, paddingTop: 12 }}>
+              <div style={{ fontSize: 13, color: "#a89a83", marginBottom: 6, fontWeight: 700 }}>Muistutukset</div>
+              <p style={{ fontSize: 12, color: "#8a7c66", margin: "0 0 10px", lineHeight: 1.5 }}>
+                Muistutus tulee eri Warhammer-hahmolta joka kerta — lempeästä primarkista
+                kaaosjumalaan sen mukaan, kuinka kauan urakka on ollut hiljaa. Palvelin lähettää
+                sen illalla myös silloin kun sovellus on kiinni
+                {VAPID_PUBLIC_KEY ? "" : " (taustapush ei ole käytössä tässä asennuksessa)"}.
+                iOS vaatii, että sovellus on lisätty kotinäytölle.
+              </p>
+              {notifyPerm === "granted" ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13, color: "#8fae7a" }}>✓ Muistutukset käytössä</span>
+                  <button onClick={testNotification} style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8, padding: "7px 12px", color: "#c4b596", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                    Näytä esimerkki
+                  </button>
+                </div>
+              ) : notifyPerm === "denied" ? (
+                <p style={{ fontSize: 12, color: "#d98a8a", margin: 0, lineHeight: 1.5 }}>
+                  Ilmoitukset on estetty selaimen asetuksissa. Salli ne sivun asetuksista (lukkokuvake osoiterivillä) ottaaksesi muistutukset käyttöön.
+                </p>
+              ) : notifyPerm === "unsupported" ? (
+                <p style={{ fontSize: 12, color: "#8a7c66", margin: 0 }}>
+                  Tämä selain ei tue ilmoituksia.
+                </p>
+              ) : (
+                <button onClick={enableNotifications} style={{ background: "linear-gradient(135deg,#7a5c1e,#9c7c34)", border: "1px solid #e8c56a", borderRadius: 8, padding: "9px 14px", color: "#fff8e6", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  Ota muistutukset käyttöön
+                </button>
+              )}
             </div>
           </section>
         )}
