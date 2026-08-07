@@ -179,6 +179,10 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 const NO_FACTION = "Määrittelemätön";
 const facKey = (f) => (f || "").trim().toLowerCase();
 
+/* Placeholderien turvamuunnin: NaN tai undefined ei saa koskaan päätyä
+   käyttäjälle näkyvään ilmoitukseen. Palauttaa aina kelvollisen luvun. */
+const safeNum = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+
 /* VAPID-avaimen muunnos push-tilausta varten */
 function urlB64ToU8(base64) {
   const pad = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -872,11 +876,11 @@ function Tracker({ session, online, onSignOut }) {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
     const pool = [...NOTIFY.soft, ...NOTIFY.mid, ...NOTIFY.hard];
     const msg = pool[Math.floor(Math.random() * pool.length)];
-    const grey = stats.total - stats.finished;
+    const grey = Math.max(0, stats.total - stats.done);
     const fill = (s) => s
       .replace(/{name}/g, profileName || "soturi")
-      .replace(/{grey}/g, grey || 0)
-      .replace(/{streak}/g, momentum.best || 3)
+      .replace(/{grey}/g, safeNum(grey))
+      .replace(/{streak}/g, safeNum(momentum.best, 3))
       .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "Clanrats");
     const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-test", lang: "fi" };
     navigator.serviceWorker?.ready
@@ -1096,11 +1100,11 @@ function Tracker({ session, online, onSignOut }) {
 
     const pool = gap >= 5 ? NOTIFY.hard : gap >= 2 ? NOTIFY.mid : NOTIFY.soft;
     const msg = pool[Math.floor(Math.random() * pool.length)];
-    const grey = stats.total - stats.finished;
+    const grey = Math.max(0, stats.total - stats.done);
     const fill = (s) => s
       .replace(/{name}/g, profileName || "soturi")
-      .replace(/{grey}/g, grey)
-      .replace(/{streak}/g, momentum.best || gap)
+      .replace(/{grey}/g, safeNum(grey))
+      .replace(/{streak}/g, safeNum(momentum.best, safeNum(gap, 1)))
       .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "urakka");
 
     const title = fill(msg.who);
@@ -2161,7 +2165,7 @@ function Tracker({ session, online, onSignOut }) {
             <Heatmap byDay={momentum.byDay} />
             <div style={{ marginTop: 8, fontSize: 11, color: "#6e5f4d" }}>
               {momentum.best > 0
-                ? `Pisin putki: ${momentum.best} pv · ${momentum.daysActive ?? momentum.byDay.size} aktiivista päivää · yhteensä ${momentum.totalSteps} askelta`
+                ? `Pisin putki: ${momentum.best} pv · ${momentum.byDay.size} aktiivista päivää · yhteensä ${momentum.totalSteps} askelta`
                 : "Ei vielä merkintöjä"}
             </div>
           </section>
