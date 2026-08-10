@@ -34,11 +34,11 @@ const MAX_SEARCHES = 2;
 const VAPID_PUBLIC_KEY = "BGj0o9zfUS6MirJfp4y-lOwM-IAekSK4y2SfebJ6XoHX-oHZLHmZ30LKa17PovTdqUDICZqzUE5P9v_AyILROko";
 
 const STAGES = [
-  { key: 0, name: "To-do",             short: "TD", color: "#7d7f85", bg: "#3a3c41", desc: "Harmaata muovia",   verb: "kasausta",             min: 6 },
-  { key: 1, name: "Kasattu",           short: "KA", color: "#9fb4c2", bg: "#41505c", desc: "Kasattu, ei maalia", verb: "pohjamaalia",          min: 2 },
-  { key: 2, name: "Pohjamaalattu",     short: "PM", color: "#c8c8cf", bg: "#232326", desc: "Primeri päällä",     verb: "maalauksen aloitusta", min: 10 },
-  { key: 3, name: "Maalaus aloitettu", short: "MA", color: "#d98a4b", bg: "#6e3d1e", desc: "Työn alla",          verb: "viimeistelyä",         min: 15 },
-  { key: 4, name: "Valmis",            short: "OK", color: "#e8c56a", bg: "#7a5c1e", desc: "Maalattu ja valmis!", verb: null,                  min: 0 },
+  { key: 0, name: "To-do",             short: "TD", color: "var(--s0)", bg: "var(--s0-bg)", desc: "Harmaata muovia",   verb: "kasausta",             min: 6 },
+  { key: 1, name: "Kasattu",           short: "KA", color: "var(--s1)", bg: "var(--s1-bg)", desc: "Kasattu, ei maalia", verb: "pohjamaalia",          min: 2 },
+  { key: 2, name: "Pohjamaalattu",     short: "PM", color: "var(--s2)", bg: "var(--s2-bg)", desc: "Primeri päällä",     verb: "maalauksen aloitusta", min: 10 },
+  { key: 3, name: "Maalaus aloitettu", short: "MA", color: "var(--s3)", bg: "var(--s3-bg)", desc: "Työn alla",          verb: "viimeistelyä",         min: 15 },
+  { key: 4, name: "Valmis",            short: "OK", color: "var(--gold)", bg: "var(--gold-deep)", desc: "Maalattu ja valmis!", verb: null,                  min: 0 },
 ];
 
 const SYSTEMS = [
@@ -56,10 +56,10 @@ const SYSTEMS = [
    päiväennätys, paluu tauolta) tulevat lokista.
    ============================================================ */
 const TIERS = {
-  common: { name: "Tavallinen",  color: "#8a8f96", bg: "#2b2e33" },
-  rare:   { name: "Harvinainen", color: "#9fb4c2", bg: "#26333c" },
-  epic:   { name: "Eeppinen",    color: "#b98ad6", bg: "#2f2338" },
-  legend: { name: "Legenda",     color: "#e8c56a", bg: "#3a2c12" },
+  common: { name: "Tavallinen",  color: "var(--s0)", bg: "var(--surface-3)" },
+  rare:   { name: "Harvinainen", color: "var(--s1)", bg: "var(--s1-bg)" },
+  epic:   { name: "Eeppinen",    color: "#B98AD6", bg: "#2C2038" },
+  legend: { name: "Legenda",     color: "var(--gold)", bg: "var(--s4-bg)" },
 };
 
 const ACHIEVEMENTS = [
@@ -227,10 +227,12 @@ const MONTHS_FI = ["tammi", "helmi", "maalis", "huhti", "touko", "kesä", "hein�
 
 /* ---------- tyylipohjat ---------- */
 const S = {
-  input: { background: "#17130f", border: "1px solid #4a3c28", borderRadius: 8, padding: "11px 12px", color: "#efe6d3", fontSize: 15, fontFamily: "inherit", boxSizing: "border-box", width: "100%" },
-  gold: { background: "linear-gradient(135deg,#7a5c1e,#9c7c34)", border: "1px solid #e8c56a", borderRadius: 8, padding: "11px 14px", color: "#fff8e6", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" },
-  ghost: { background: "none", border: "none", color: "#9c7c34", fontSize: 13, cursor: "pointer", padding: 4, textDecoration: "underline", fontFamily: "inherit" },
-  panel: { background: "#211b15", border: "1px solid #3a2f22", borderRadius: 12, padding: 16 },
+  /* Inline-tyylit on korvattu pääosin styles.css:n luokilla (.panel, .field,
+     .btn, .card jne). Nämä jäljelle jääneet ovat harvoja poikkeuksia. */
+  panel: {},
+  input: {},
+  gold: {},
+  ghost: {},
 };
 
 /* ---------- Anthropic API ---------- */
@@ -346,46 +348,46 @@ function AuthScreen() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#17130f", color: "#d9d2c5", fontFamily: "'Alegreya Sans', system-ui, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div className="card-in" style={{ width: "100%", maxWidth: 380 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "var(--body)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div className="rise" style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ textAlign: "center", marginBottom: 22 }}>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: "0.35em", color: "#9c7c34", textTransform: "uppercase" }}>Maalausurakka</div>
-          <h1 style={{ fontFamily: "'Cinzel', serif", fontSize: 26, fontWeight: 700, color: "#efe6d3", margin: "4px 0 0" }}>
+          <div style={{ fontFamily: "var(--display)", fontSize: 12, letterSpacing: "0.35em", color: "var(--gold-dim)", textTransform: "uppercase" }}>Maalausurakka</div>
+          <h1 style={{ fontFamily: "var(--display)", fontSize: 26, fontWeight: 700, color: "var(--text)", margin: "4px 0 0" }}>
             {mode === "in" ? "Kirjaudu sisään" : "Luo profiili"}
           </h1>
         </div>
 
-        <div style={{ ...S.panel, display: "flex", flexDirection: "column", gap: 10 }}>
-          {mode === "up" && <input value={name} onChange={e => setName(e.target.value)} placeholder="Profiilin nimi (esim. Jani)" style={S.input} />}
-          <input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="Sähköposti" style={S.input} />
+        <div className="panel" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {mode === "up" && <input value={name} onChange={e => setName(e.target.value)} placeholder="Profiilin nimi (esim. Jani)" className="field" />}
+          <input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="Sähköposti" className="field" />
           <input type="password" autoComplete={mode === "up" ? "new-password" : "current-password"} value={password}
-            onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Salasana" style={S.input} />
-          <button onClick={submit} disabled={busy} style={{ ...S.gold, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+            onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Salasana" className="field" />
+          <button onClick={submit} disabled={busy} className="btn btn-gold" style={{ opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
             {busy ? "Hetki…" : mode === "in" ? "Kirjaudu" : "Luo profiili"}
           </button>
-          {err && <p style={{ color: "#d98a8a", fontSize: 13, margin: 0 }}>{err}</p>}
-          {msg && <p style={{ color: "#8fae7a", fontSize: 13, margin: 0 }}>{msg}</p>}
-          <button onClick={() => { setMode(mode === "in" ? "up" : "in"); setErr(null); setMsg(null); }} style={{ ...S.ghost, alignSelf: "center" }}>
+          {err && <p style={{ color: "var(--err)", fontSize: 13, margin: 0 }}>{err}</p>}
+          {msg && <p style={{ color: "var(--ok)", fontSize: 13, margin: 0 }}>{msg}</p>}
+          <button onClick={() => { setMode(mode === "in" ? "up" : "in"); setErr(null); setMsg(null); }} className="btn-ghost" style={{ alignSelf: "center" }}>
             {mode === "in" ? "Ei vielä profiilia? Luo uusi" : "Onko jo profiili? Kirjaudu sisään"}
           </button>
         </div>
 
         {mode === "in" && known.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 11, color: "#6e5f4d", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Tämän selaimen profiilit</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Tämän selaimen profiilit</div>
             {known.map(k => (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
                 <button onClick={() => setEmail(k)} style={{
-                  flex: 1, textAlign: "left", background: "#211b15", border: `1px solid ${email === k ? "#9c7c34" : "#3a2f22"}`,
-                  borderRadius: 8, padding: "8px 10px", color: "#c4b596", fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+                  flex: 1, textAlign: "left", background: "var(--surface)", border: `1px solid ${email === k ? "var(--gold-dim)" : "var(--line-soft)"}`,
+                  borderRadius: "var(--r2)", padding: "8px 10px", color: "var(--text-2)", fontSize: 13, cursor: "pointer",
                 }}>{k}</button>
-                <button onClick={() => forgetEmail(k)} title="Poista listalta" style={{ background: "none", border: "none", color: "#6e5f4d", fontSize: 14, cursor: "pointer", padding: 6 }}>×</button>
+                <button onClick={() => forgetEmail(k)} title="Poista listalta" style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 14, cursor: "pointer", padding: 6 }}>×</button>
               </div>
             ))}
           </div>
         )}
 
-        <p style={{ fontSize: 11, color: "#6e5f4d", textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>
           Jokaisella profiililla on oma maalausurakkansa ja oma Anthropic-avaimensa.
         </p>
       </div>
@@ -396,32 +398,30 @@ function AuthScreen() {
 /* ============================================================
    PIENET KOMPONENTIT
    ============================================================ */
-function Chevron({ open, color = "#9c7c34" }) {
-  return (
-    <span aria-hidden="true" style={{
-      display: "inline-block", width: 0, height: 0, flexShrink: 0,
-      borderLeft: "5px solid transparent", borderRight: "5px solid transparent",
-      borderTop: `6px solid ${color}`,
-      transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-      transition: "transform .18s ease",
-    }} />
-  );
+function Chevron({ open }) {
+  return <span aria-hidden="true" className={"chev" + (open ? " is-open" : "")} />;
 }
 
-/* vaihejakauman palkki — sama esitys sekä kokonaisuudelle että yksittäiselle tuotteelle */
-function StageBar({ perStage, total, height = 12 }) {
+/* Putkilinja: näyttää miten minit virtaavat harmaasta kultaan.
+   Tämä on sovelluksen signature-elementti — se kertoo missä työ seisoo,
+   ei pelkkää prosenttia. `slim` on ohut versio korteille. */
+function StageBar({ perStage, total, slim = false, showCounts = false }) {
+  if (!total) return null;
   return (
-    <div style={{
-      display: "flex", height, borderRadius: height / 2, overflow: "hidden",
-      background: "#2c251c", border: "1px solid #3a2f22",
-    }}>
-      {STAGES.map(st => (perStage[st.key] > 0 && total > 0) ? (
-        <div key={st.key} title={`${st.name}: ${perStage[st.key]}`} style={{
-          width: `${(perStage[st.key] / total) * 100}%`,
-          background: st.key === 0 ? "transparent" : st.color,
-          opacity: st.key === 0 ? 0 : 0.9,
-        }} />
-      ) : null)}
+    <div className={"pipeline" + (slim ? " slim" : "")}>
+      {STAGES.map(st => {
+        const n = perStage[st.key];
+        if (!n) return null;
+        const pct = (n / total) * 100;
+        return (
+          <div key={st.key}
+            className={"pipe-seg pipe-" + st.key}
+            style={{ flex: `${n} 1 0` }}
+            title={`${st.name}: ${n}`}>
+            {showCounts && pct > 7 ? n : ""}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -459,8 +459,8 @@ function FactionInput({ value, onCommit, listId, options, style }) {
         }}
         style={{
           ...style, width: "100%", paddingRight: dirty ? 26 : 8,
-          borderColor: dirty ? "#9c7c34" : "#3a2f22",
-          color: dirty ? "#c4b596" : "#8a7c66",
+          borderColor: dirty ? "var(--gold-dim)" : "var(--line-soft)",
+          color: dirty ? "var(--text-2)" : "var(--text-3)",
         }}
       />
       {dirty && (
@@ -471,7 +471,7 @@ function FactionInput({ value, onCommit, listId, options, style }) {
           aria-label="Tallenna rotu"
           style={{
             position: "absolute", right: 4, background: "none", border: "none",
-            color: "#e8c56a", fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 3,
+            color: "var(--gold)", fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 3,
           }}>✓</button>
       )}
       <datalist id={listId}>
@@ -502,12 +502,12 @@ function RecipeEditor({ value, onCommit }) {
         onKeyDown={e => { if (e.key === "Escape") { setDraft(value || ""); setFocused(false); ref.current.blur(); } }}
         style={{
           width: "100%", boxSizing: "border-box", resize: "vertical",
-          background: "#17130f", border: `1px solid ${dirty ? "#9c7c34" : "#3a2f22"}`,
-          borderRadius: 8, padding: "8px 10px", color: "#c4b596",
-          fontSize: 13, lineHeight: 1.5, fontFamily: "inherit",
+          background: "var(--bg)", border: `1px solid ${dirty ? "var(--gold-dim)" : "var(--line-soft)"}`,
+          borderRadius: "var(--r2)", padding: "8px 10px", color: "var(--text-2)",
+          fontSize: 13, lineHeight: 1.5,
         }}
       />
-      <div style={{ fontSize: 10.5, color: dirty ? "#9c7c34" : "#5a5248", marginTop: 2 }}>
+      <div style={{ fontSize: 10.5, color: dirty ? "var(--gold-dim)" : "var(--text-4)", marginTop: 2 }}>
         {dirty ? "Tallentuu kun siirryt pois kentästä (Esc peruu)" : "Näkyy myös Seuraava siirto -kortissa"}
       </div>
     </div>
@@ -538,9 +538,8 @@ function UnitEditRow({ unit, onRename, onResize, onRemove, canRemove }) {
   const nameDirty = name.trim() !== unit.name;
   const countDirty = String(count) !== String(unit.minis.length);
   const field = (dirty) => ({
-    background: "#17130f", border: `1px solid ${dirty ? "#9c7c34" : "#4a3c28"}`,
-    borderRadius: 6, padding: "6px 8px", color: "#c4b596", fontSize: 13,
-    fontFamily: "inherit", boxSizing: "border-box",
+    background: "var(--bg)", border: `1px solid ${dirty ? "var(--gold-dim)" : "var(--line)"}`,
+    borderRadius: "var(--r1)", padding: "6px 8px", color: "var(--text-2)", fontSize: 13, boxSizing: "border-box",
   });
 
   return (
@@ -573,7 +572,7 @@ function UnitEditRow({ unit, onRename, onResize, onRemove, canRemove }) {
         aria-label="Poista miniatyyri"
         style={{
           background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
-          color: canRemove ? "#a54040" : "#3a2f22", fontSize: 17, lineHeight: 1,
+          color: canRemove ? "#C05050" : "var(--line-soft)", fontSize: 17, lineHeight: 1,
           cursor: canRemove ? "pointer" : "default",
         }}>×</button>
     </div>
@@ -594,16 +593,15 @@ function AddUnitForm({ onAdd }) {
     <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 8 }}>
       <input type="number" min="1" max="200" value={count} aria-label="Määrä"
         onChange={e => setCount(e.target.value)}
-        style={{ background: "#17130f", border: "1px dashed #4a3c28", borderRadius: 6, padding: "6px 8px", color: "#c4b596", fontSize: 13, fontFamily: "inherit", width: 62, flexShrink: 0, boxSizing: "border-box" }} />
+        style={{ background: "var(--bg)", border: "1px dashed var(--line)", borderRadius: "var(--r1)", padding: "6px 8px", color: "var(--text-2)", fontSize: 13, width: 62, flexShrink: 0, boxSizing: "border-box" }} />
       <input value={name} placeholder="Uusi miniatyyri…" aria-label="Uuden miniatyyrin nimi"
         onChange={e => setName(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter") submit(); }}
-        style={{ background: "#17130f", border: "1px dashed #4a3c28", borderRadius: 6, padding: "6px 8px", color: "#c4b596", fontSize: 13, fontFamily: "inherit", flex: 1, minWidth: 0, boxSizing: "border-box" }} />
+        style={{ background: "var(--bg)", border: "1px dashed var(--line)", borderRadius: "var(--r1)", padding: "6px 8px", color: "var(--text-2)", fontSize: 13, flex: 1, minWidth: 0, boxSizing: "border-box" }} />
       <button onClick={submit} disabled={!valid} aria-label="Lisää miniatyyri" style={{
-        background: valid ? "#3a2f22" : "transparent", border: `1px solid ${valid ? "#5a4930" : "#3a2f22"}`,
-        borderRadius: 6, padding: "6px 10px", color: valid ? "#e8c56a" : "#3a2f22",
-        fontSize: 13, fontWeight: 700, cursor: valid ? "pointer" : "default",
-        fontFamily: "inherit", flexShrink: 0,
+        background: valid ? "var(--line-soft)" : "transparent", border: `1px solid ${valid ? "var(--surface-3)" : "var(--line-soft)"}`,
+        borderRadius: "var(--r1)", padding: "6px 10px", color: valid ? "var(--gold)" : "var(--line-soft)",
+        fontSize: 13, fontWeight: 700, cursor: valid ? "pointer" : "default", flexShrink: 0,
       }}>+</button>
     </div>
   );
@@ -617,11 +615,11 @@ function Heatmap({ byDay }) {
   const firstCol = addDays(startOfWeek(today), -(HEATMAP_WEEKS - 1) * 7);
 
   const shade = (n) => {
-    if (!n) return "#241d16";
-    if (n <= 2) return "#5a4520";
-    if (n <= 5) return "#8a6b2c";
-    if (n <= 10) return "#c9a554";
-    return "#e8c56a";
+    if (!n) return "var(--surface-2)";
+    if (n <= 2) return "#5A4520";
+    if (n <= 5) return "#8A6B2C";
+    if (n <= 10) return "var(--gold-mid)";
+    return "var(--gold)";
   };
 
   const cols = [];
@@ -633,12 +631,12 @@ function Heatmap({ byDay }) {
       const future = date > today;
       const n = byDay.get(dayKey(date)) || 0;
       cells.push(
-        <div key={d}
+        <div key={d} className="hm-cell"
           title={future ? "" : `${fiDate(date)} — ${n} ${n === 1 ? "askel" : "askelta"}`}
           style={{
-            width: 12, height: 12, borderRadius: 2,
+            width: 12, height: 12,
             background: future ? "transparent" : shade(n),
-            border: future ? "none" : `1px solid ${n ? "transparent" : "#2c251c"}`,
+            border: future ? "none" : `1px solid ${n ? "transparent" : "var(--surface-2)"}`,
             boxSizing: "border-box",
           }} />
       );
@@ -647,7 +645,7 @@ function Heatmap({ byDay }) {
     const label = weekStart.getDate() <= 7 ? MONTHS_FI[weekStart.getMonth()] : "";
     cols.push(
       <div key={w} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        <div style={{ height: 11, fontSize: 9, color: "#6e5f4d", whiteSpace: "nowrap", lineHeight: "11px" }}>{label}</div>
+        <div style={{ height: 11, fontSize: 9, color: "var(--text-3)", whiteSpace: "nowrap", lineHeight: "11px" }}>{label}</div>
         {cells}
       </div>
     );
@@ -690,12 +688,12 @@ function Tracker({ session, online, onSignOut }) {
   const [settingsMsg, setSettingsMsg] = useState(null);
   const [suggIdx, setSuggIdx] = useState(0);
   const [flash, setFlash] = useState(null);
-  const [closedCats, setClosedCats] = useState([]); // tyhjä = kaikki kategoriat auki
+  const [openCats, setOpenCats] = useState([]);     // tyhjä = kaikki kiinni
   const [achieved, setAchieved] = useState({});     // saavutus-id -> ansaintahetki (ISO)
   const [achOpen, setAchOpen] = useState(false);
   const [popup, setPopup] = useState(null);         // juuri ansaitut saavutukset
   const firstAch = useRef(true);
-  const [closedFacs, setClosedFacs] = useState([]); // tyhjä = kaikki rodut auki
+  const [openFacs, setOpenFacs] = useState([]);     // tyhjä = kaikki kiinni
   const [openProds, setOpenProds] = useState([]);   // tyhjä = kaikki tuotteet kiinni
   const [openRecipes, setOpenRecipes] = useState([]); // avatut maaliohjeet (unit-id)
   const [editProds, setEditProds] = useState([]);    // tuotteet muokkaustilassa (ei tallenneta)
@@ -740,8 +738,8 @@ function Tracker({ session, online, onSignOut }) {
   useEffect(() => {
     try {
       const ui = JSON.parse(localStorage.getItem(uiKey) || "{}");
-      if (Array.isArray(ui.closedCats)) setClosedCats(ui.closedCats);
-      if (Array.isArray(ui.closedFacs)) setClosedFacs(ui.closedFacs);
+      if (Array.isArray(ui.openCats)) setOpenCats(ui.openCats);
+      if (Array.isArray(ui.openFacs)) setOpenFacs(ui.openFacs);
       if (Array.isArray(ui.openProds)) setOpenProds(ui.openProds);
       if (typeof ui.achOpen === "boolean") setAchOpen(ui.achOpen);
     } catch (e) {}
@@ -749,14 +747,14 @@ function Tracker({ session, online, onSignOut }) {
 
   useEffect(() => {
     if (!loaded) return;
-    try { localStorage.setItem(uiKey, JSON.stringify({ closedCats, closedFacs, openProds, achOpen })); } catch (e) {}
-  }, [closedCats, closedFacs, openProds, achOpen, loaded, uiKey]);
+    try { localStorage.setItem(uiKey, JSON.stringify({ openCats, openFacs, openProds, achOpen })); } catch (e) {}
+  }, [openCats, openFacs, openProds, achOpen, loaded, uiKey]);
 
-  const catOpen = (sys) => !closedCats.includes(sys);
-  const facOpen = (id) => !closedFacs.includes(id);
+  const catOpen = (sys) => openCats.includes(sys);
+  const facOpen = (id) => openFacs.includes(id);
   const prodOpen = (pid) => openProds.includes(pid);
-  const toggleCat = (sys) => setClosedCats(prev => prev.includes(sys) ? prev.filter(x => x !== sys) : [...prev, sys]);
-  const toggleFac = (id) => setClosedFacs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleCat = (sys) => setOpenCats(prev => prev.includes(sys) ? prev.filter(x => x !== sys) : [...prev, sys]);
+  const toggleFac = (id) => setOpenFacs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleProd = (pid) => setOpenProds(prev => prev.includes(pid) ? prev.filter(x => x !== pid) : [...prev, pid]);
 
   /* ---- tallennus (debounce) ----
@@ -1088,8 +1086,9 @@ function Tracker({ session, online, onSignOut }) {
     // avaa kategoria, rotu ja tuote ennen vieritystä
     const p = products.find(x => x.id === pid);
     const sys = p && SYSTEMS.includes(p.system) ? p.system : "Muu";
-    setClosedCats(prev => prev.filter(x => x !== sys));
-    setClosedFacs(prev => prev.filter(x => x !== sys + "::" + facKey(p?.faction)));
+    const fid = sys + "::" + facKey(p?.faction);
+    setOpenCats(prev => prev.includes(sys) ? prev : [...prev, sys]);
+    setOpenFacs(prev => prev.includes(fid) ? prev : [...prev, fid]);
     setOpenProds(prev => prev.includes(pid) ? prev : [...prev, pid]);
     setFlash(pid);
     setTimeout(() => setFlash(null), 2100);
@@ -1332,41 +1331,41 @@ function Tracker({ session, online, onSignOut }) {
   };
 
   const syncLabel = {
-    loading: { txt: "Ladataan…", color: "#a89a83" },
-    synced:  { txt: "● Tallennettu", color: "#8fae7a" },
-    saving:  { txt: "● Tallennetaan…", color: "#d9b34b" },
-    error:   { txt: "● Tallennus ei onnistu — tarkista yhteys", color: "#d98a8a" },
+    loading: { txt: "Ladataan…", color: "var(--text-2)" },
+    synced:  { txt: "● Tallennettu", color: "var(--ok)" },
+    saving:  { txt: "● Tallennetaan…", color: "var(--warn)" },
+    error:   { txt: "● Tallennus ei onnistu — tarkista yhteys", color: "var(--err)" },
   }[syncState];
 
   const weekDelta = momentum.thisWeek - momentum.lastWeek;
 
   /* ============================ UI ============================ */
   return (
-    <div style={{ minHeight: "100vh", background: "#17130f", color: "#d9d2c5", fontFamily: "'Alegreya Sans', system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "var(--body)" }}>
       {celebrate && (
-        <div style={{
-          position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 50,
-          background: "linear-gradient(135deg,#7a5c1e,#b9903a)", border: "1px solid #e8c56a",
-          borderRadius: 10, padding: "10px 18px", color: "#fff8e6", fontWeight: 700,
-          animation: "bannerdrop .35s ease both", boxShadow: "0 6px 24px rgba(0,0,0,.5)", maxWidth: "90vw", textAlign: "center",
+        <div className="toast" style={{
+          top: 12,
+          background: "linear-gradient(180deg, #7A6224, #4D3D18)",
+          border: "1px solid var(--gold)", padding: "11px 18px",
+          color: "var(--gold)", fontWeight: 600, textAlign: "center",
         }}>🏆 {celebrate} — kokonaan valmis!</div>
       )}
 
       {popup && popup.length > 0 && (
-        <div className="card-in" style={{
-          position: "fixed", top: celebrate ? 62 : 12, left: "50%", transform: "translateX(-50%)", zIndex: 49,
-          background: TIERS[popup[0].tier].bg, border: `1px solid ${TIERS[popup[0].tier].color}`,
-          borderRadius: 10, padding: "10px 16px", boxShadow: "0 6px 24px rgba(0,0,0,.5)",
-          maxWidth: "92vw", display: "flex", alignItems: "center", gap: 10,
+        <div className="toast" style={{
+          top: celebrate ? 66 : 12,
+          background: TIERS[popup[0].tier].bg,
+          border: `1px solid ${TIERS[popup[0].tier].color}`,
+          padding: "11px 16px", display: "flex", alignItems: "center", gap: 11,
         }}>
           <span style={{ fontSize: 22, flexShrink: 0 }}>{popup[0].icon}</span>
           <span style={{ minWidth: 0 }}>
             <span style={{ display: "block", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: TIERS[popup[0].tier].color, opacity: 0.8 }}>
               Uusi saavutus · {TIERS[popup[0].tier].name}
             </span>
-            <span style={{ display: "block", fontWeight: 700, color: "#efe6d3", fontSize: 14 }}>
+            <span style={{ display: "block", fontWeight: 700, color: "var(--text)", fontSize: 14 }}>
               {popup[0].name}
-              {popup.length > 1 && <span style={{ color: "#8a7c66", fontWeight: 400 }}> +{popup.length - 1} muuta</span>}
+              {popup.length > 1 && <span style={{ color: "var(--text-3)", fontWeight: 400 }}> +{popup.length - 1} muuta</span>}
             </span>
           </span>
         </div>
@@ -1379,55 +1378,59 @@ function Tracker({ session, online, onSignOut }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <div style={{
               width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-              background: "linear-gradient(135deg,#7a5c1e,#9c7c34)", border: "1px solid #e8c56a",
+              background: "linear-gradient(135deg,var(--gold-deep),var(--gold-dim))", border: "1px solid var(--gold)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: "'Cinzel', serif", fontWeight: 700, color: "#fff8e6", fontSize: 13,
+              fontFamily: "var(--display)", fontWeight: 700, color: "#1A1408", fontSize: 13,
             }}>{(profileName || "?").charAt(0).toUpperCase()}</div>
-            <span style={{ fontSize: 14, color: "#c4b596", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileName}</span>
+            <span style={{ fontSize: 14, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileName}</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
             <button onClick={() => setSettingsOpen(v => !v)} aria-label="Asetukset" style={{
-              background: settingsOpen ? "#3a2f22" : "none", border: "1px solid #3a2f22", borderRadius: 8,
-              color: "#9c7c34", fontSize: 15, padding: "5px 10px", cursor: "pointer",
+              background: settingsOpen ? "var(--line-soft)" : "none", border: "1px solid var(--line-soft)", borderRadius: "var(--r2)",
+              color: "var(--gold-dim)", fontSize: 15, padding: "5px 10px", cursor: "pointer",
             }}>⚙</button>
             <button onClick={onSignOut} style={{
-              background: "none", border: "1px solid #3a2f22", borderRadius: 8,
-              color: "#8a7c66", fontSize: 13, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit",
+              background: "none", border: "1px solid var(--line-soft)", borderRadius: "var(--r2)",
+              color: "var(--text-3)", fontSize: 13, padding: "5px 10px", cursor: "pointer",
             }}>Kirjaudu ulos</button>
           </div>
         </div>
 
         {/* ---------- OTSAKE ---------- */}
-        <header style={{ textAlign: "center", marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 12, letterSpacing: "0.35em", color: "#9c7c34", textTransform: "uppercase" }}>Maalausurakka</div>
-          <h1 style={{ fontFamily: "'Cinzel', serif", fontSize: 28, fontWeight: 700, color: "#efe6d3", margin: "2px 0 0", lineHeight: 1.15 }}>
-            Harmaasta legioonasta<br />kultaiseen armeijaan
+        <header style={{ textAlign: "center", marginBottom: 6 }}>
+          <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Maalausurakka</div>
+          <h1 className="display" style={{
+            fontSize: "clamp(24px, 7vw, 34px)", fontWeight: 600, color: "var(--text)",
+            margin: "4px 0 0", lineHeight: 1.1, letterSpacing: "-.01em",
+          }}>
+            Harmaasta legioonasta<br />
+            <span style={{ color: "var(--gold)" }}>kultaiseen armeijaan</span>
           </h1>
         </header>
         <div style={{ textAlign: "center", fontSize: 12, color: syncLabel.color, marginBottom: 14 }}>{syncLabel.txt}</div>
 
         {/* ---------- ASETUKSET ---------- */}
         {settingsOpen && (
-          <section className="card-in" style={{ ...S.panel, border: "1px solid #4a3c28", padding: 14, marginBottom: 16 }}>
-            <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: 15, margin: "0 0 10px", color: "#c9a554" }}>Profiilin asetukset</h2>
-            <label style={{ fontSize: 13, color: "#a89a83", display: "block", marginBottom: 4 }}>Profiilin nimi</label>
-            <input value={draftName} onChange={e => setDraftName(e.target.value)} style={{ ...S.input, marginBottom: 12 }} />
-            <label style={{ fontSize: 13, color: "#a89a83", display: "block", marginBottom: 4 }}>Anthropic API -avain (tuotehakua varten)</label>
-            <input type="password" value={draftKey} onChange={e => setDraftKey(e.target.value)} placeholder="sk-ant-…" style={S.input} />
-            <p style={{ fontSize: 12, color: "#8a7c66", margin: "6px 0 10px", lineHeight: 1.5 }}>
+          <section className="rise" className="panel" style={{ border: "1px solid var(--line)", padding: 14, marginBottom: 16 }}>
+            <h2 style={{ fontFamily: "var(--display)", fontSize: 15, margin: "0 0 10px", color: "var(--gold-mid)" }}>Profiilin asetukset</h2>
+            <label style={{ fontSize: 13, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Profiilin nimi</label>
+            <input value={draftName} onChange={e => setDraftName(e.target.value)} className="field" style={{ marginBottom: 12 }} />
+            <label style={{ fontSize: 13, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Anthropic API -avain (tuotehakua varten)</label>
+            <input type="password" value={draftKey} onChange={e => setDraftKey(e.target.value)} placeholder="sk-ant-…" className="field" />
+            <p style={{ fontSize: 12, color: "var(--text-3)", margin: "6px 0 10px", lineHeight: 1.5 }}>
               Avain on profiilikohtainen ja tallentuu Supabaseen omalle riviellesi. Ilman avainta haku ei toimi, mutta käsinlisäys ja seuranta toimivat normaalisti.
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <button onClick={saveSettings} style={{ background: "#3a2f22", border: "1px solid #5a4930", borderRadius: 8, padding: "9px 14px", color: "#e8c56a", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              <button onClick={saveSettings} style={{ background: "var(--line-soft)", border: "1px solid var(--surface-3)", borderRadius: "var(--r2)", padding: "9px 14px", color: "var(--gold)", fontWeight: 700, cursor: "pointer" }}>
                 Tallenna
               </button>
-              {settingsMsg && <span style={{ fontSize: 13, color: settingsMsg === "Tallennettu." ? "#8fae7a" : "#d98a8a" }}>{settingsMsg}</span>}
+              {settingsMsg && <span style={{ fontSize: 13, color: settingsMsg === "Tallennettu." ? "var(--ok)" : "var(--err)" }}>{settingsMsg}</span>}
             </div>
 
             {/* ---- muistutukset ---- */}
-            <div style={{ borderTop: "1px solid #3a2f22", marginTop: 14, paddingTop: 12 }}>
-              <div style={{ fontSize: 13, color: "#a89a83", marginBottom: 6, fontWeight: 700 }}>Muistutukset</div>
-              <p style={{ fontSize: 12, color: "#8a7c66", margin: "0 0 10px", lineHeight: 1.5 }}>
+            <div style={{ borderTop: "1px solid var(--line-soft)", marginTop: 14, paddingTop: 12 }}>
+              <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 6, fontWeight: 700 }}>Muistutukset</div>
+              <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 10px", lineHeight: 1.5 }}>
                 Muistutus tulee eri Warhammer-hahmolta joka kerta — lempeästä primarkista
                 kaaosjumalaan sen mukaan, kuinka kauan urakka on ollut hiljaa. Palvelin lähettää
                 sen illalla myös silloin kun sovellus on kiinni
@@ -1436,21 +1439,21 @@ function Tracker({ session, online, onSignOut }) {
               </p>
               {notifyPerm === "granted" ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, color: "#8fae7a" }}>✓ Muistutukset käytössä</span>
-                  <button onClick={testNotification} style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8, padding: "7px 12px", color: "#c4b596", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                  <span style={{ fontSize: 13, color: "var(--ok)" }}>✓ Muistutukset käytössä</span>
+                  <button onClick={testNotification} style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r2)", padding: "7px 12px", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
                     Näytä esimerkki
                   </button>
                 </div>
               ) : notifyPerm === "denied" ? (
-                <p style={{ fontSize: 12, color: "#d98a8a", margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 12, color: "var(--err)", margin: 0, lineHeight: 1.5 }}>
                   Ilmoitukset on estetty selaimen asetuksissa. Salli ne sivun asetuksista (lukkokuvake osoiterivillä) ottaaksesi muistutukset käyttöön.
                 </p>
               ) : notifyPerm === "unsupported" ? (
-                <p style={{ fontSize: 12, color: "#8a7c66", margin: 0 }}>
+                <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
                   Tämä selain ei tue ilmoituksia.
                 </p>
               ) : (
-                <button onClick={enableNotifications} style={{ background: "linear-gradient(135deg,#7a5c1e,#9c7c34)", border: "1px solid #e8c56a", borderRadius: 8, padding: "9px 14px", color: "#fff8e6", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                <button onClick={enableNotifications} style={{ background: "linear-gradient(135deg,var(--gold-deep),var(--gold-dim))", border: "1px solid var(--gold)", borderRadius: "var(--r2)", padding: "9px 14px", color: "#1A1408", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   Ota muistutukset käyttöön
                 </button>
               )}
@@ -1460,41 +1463,41 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- TÄNÄÄN: SEURAAVA SIIRTO ---------- */}
         {suggestion && (
-          <section className="card-in" style={{
-            background: "linear-gradient(135deg,#2a2116,#241d14)", border: "1px solid #7a5c1e",
-            borderRadius: 12, padding: 16, marginBottom: 16,
+          <section className="rise" style={{
+            background: "linear-gradient(135deg,var(--surface-3),var(--surface-2))", border: "1px solid var(--gold-deep)",
+            borderRadius: "var(--r3)", padding: 16, marginBottom: 16,
           }}>
-            <div style={{ fontSize: 11, color: "#9c7c34", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 8 }}>
               Seuraava siirto
             </div>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 19, color: "#efe6d3", fontWeight: 700, lineHeight: 1.3 }}>
+            <div style={{ fontFamily: "var(--display)", fontSize: 19, color: "var(--text)", fontWeight: 700, lineHeight: 1.3 }}>
               {suggestion.n} × {suggestion.unit}
             </div>
-            <div style={{ fontSize: 14, color: "#c4b596", marginTop: 3 }}>
+            <div style={{ fontSize: 14, color: "var(--text-2)", marginTop: 3 }}>
               odottaa {STAGES[suggestion.stage].verb} · noin {suggestion.est} min
             </div>
-            <div style={{ fontSize: 12, color: "#8a7c66", marginTop: 2 }}>{suggestion.product}</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{suggestion.product}</div>
             {suggestion.recipe && (
               <div style={{
-                marginTop: 10, background: "#1c1710", border: "1px solid #3a2f22",
-                borderRadius: 8, padding: "8px 10px",
+                marginTop: 10, background: "var(--surface-2)", border: "1px solid var(--line-soft)",
+                borderRadius: "var(--r2)", padding: "8px 10px",
               }}>
-                <div style={{ fontSize: 10, color: "#9c7c34", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>
+                <div style={{ fontSize: 10, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>
                   🎨 Maaliohje
                 </div>
-                <div style={{ fontSize: 12.5, color: "#c4b596", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
                   {suggestion.recipe}
                 </div>
               </div>
             )}
             <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <button onClick={() => goToProduct(suggestion.pid)} style={{ ...S.gold, padding: "9px 16px", fontSize: 14 }}>
+              <button onClick={() => goToProduct(suggestion.pid)} className="btn btn-gold" style={{ padding: "9px 16px", fontSize: 14 }}>
                 Näytä
               </button>
               {suggestions.length > 1 && (
                 <button onClick={() => setSuggIdx(i => i + 1)} style={{
-                  background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8,
-                  padding: "9px 14px", color: "#a89a83", fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+                  background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r2)",
+                  padding: "9px 14px", color: "var(--text-2)", fontSize: 14, cursor: "pointer",
                 }}>Ehdota toinen</button>
               )}
             </div>
@@ -1503,35 +1506,31 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- MOMENTUM ---------- */}
         {stats.total > 0 && (
-          <section style={{ ...S.panel, marginBottom: 16 }}>
+          <section className="panel" style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
               {/* putki */}
-              <div style={{ flex: "1 1 100px", background: "#17130f", border: `1px solid ${momentum.streak ? "#5a4930" : "#2c251c"}`, borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color: momentum.streak ? "#e8c56a" : "#5a5248" }}>
-                  {momentum.streak > 0 && "🔥 "}{momentum.streak}
+              <div className={"stat" + (momentum.streak ? " is-live" : "")}>
+                <div className="stat-val" style={{ color: momentum.streak ? "var(--gold)" : "var(--text-4)" }}>
+                  {momentum.streak > 0 && <span style={{ fontSize: 17 }}>🔥 </span>}{momentum.streak}
                 </div>
-                <div style={{ fontSize: 11, color: "#8a7c66", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {momentum.streak === 1 ? "päivän putki" : "päivän putki"}
-                </div>
+                <div className="stat-label">päivän putki</div>
               </div>
               {/* tällä viikolla */}
-              <div style={{ flex: "1 1 100px", background: "#17130f", border: "1px solid #2c251c", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color: momentum.thisWeek ? "#c9a554" : "#5a5248" }}>
+              <div className="stat">
+                <div className="stat-val" style={{ color: momentum.thisWeek ? "var(--gold-mid)" : "var(--text-4)" }}>
                   {momentum.thisWeek}
                 </div>
-                <div style={{ fontSize: 11, color: "#8a7c66", textTransform: "uppercase", letterSpacing: "0.06em" }}>tällä viikolla</div>
+                <div className="stat-label">tällä viikolla</div>
               </div>
               {/* viime viikolla */}
-              <div style={{ flex: "1 1 100px", background: "#17130f", border: "1px solid #2c251c", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color: "#7d7f85" }}>
-                  {momentum.lastWeek}
-                </div>
-                <div style={{ fontSize: 11, color: "#8a7c66", textTransform: "uppercase", letterSpacing: "0.06em" }}>viime viikolla</div>
+              <div className="stat">
+                <div className="stat-val" style={{ color: "var(--text-3)" }}>{momentum.lastWeek}</div>
+                <div className="stat-label">viime viikolla</div>
               </div>
             </div>
 
             {/* putken tila / viikkovertailu */}
-            <p style={{ fontSize: 13, color: "#c4b596", margin: "0 0 12px", fontStyle: "italic" }}>
+            <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 12px", fontStyle: "italic" }}>
               {momentum.streak > 0 && !momentum.activeToday
                 ? `Putki on ${momentum.streak} päivää — yksi askel tänään pitää sen elossa.`
                 : momentum.activeToday && momentum.today > 0
@@ -1547,34 +1546,34 @@ function Tracker({ session, online, onSignOut }) {
               <button onClick={() => { setAchOpen(true); requestAnimationFrame(() => document.getElementById("saavutukset")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}
                 style={{
                   display: "flex", width: "100%", alignItems: "center", gap: 10, textAlign: "left",
-                  background: "#17130f", border: "1px solid #2c251c", borderRadius: 10,
-                  padding: "10px 12px", cursor: "pointer", fontFamily: "inherit",
+                  background: "var(--bg)", border: "1px solid var(--surface-2)", borderRadius: "var(--r2)",
+                  padding: "10px 12px", cursor: "pointer",
                 }}>
                 <span style={{ fontSize: 20, flexShrink: 0, filter: "grayscale(1)", opacity: 0.7 }}>{nextAch.icon}</span>
                 <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: "block", fontSize: 11, color: "#6e5f4d", textTransform: "uppercase", letterSpacing: "0.08em" }}>Seuraava saavutus</span>
-                  <span style={{ display: "block", fontSize: 13, color: "#c4b596", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Seuraava saavutus</span>
+                  <span style={{ display: "block", fontSize: 13, color: "var(--text-2)", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {nextAch.name}
                   </span>
-                  <span style={{ display: "block", height: 4, borderRadius: 2, background: "#2c251c", marginTop: 4, overflow: "hidden" }}>
+                  <span style={{ display: "block", height: 4, borderRadius: "2px", background: "var(--surface-2)", marginTop: 4, overflow: "hidden" }}>
                     <span style={{ display: "block", height: "100%", width: `${(nextAch.cur / nextAch.target) * 100}%`, background: TIERS[nextAch.tier].color }} />
                   </span>
                 </span>
-                <span style={{ fontSize: 12, color: "#8a7c66", flexShrink: 0 }}>{nextAch.cur}/{nextAch.target}</span>
+                <span style={{ fontSize: 12, color: "var(--text-3)", flexShrink: 0 }}>{nextAch.cur}/{nextAch.target}</span>
               </button>
             )}
           </section>
         )}
 
         {/* ---------- EDISTYMINEN ---------- */}
-        <section style={{ ...S.panel, marginBottom: 16 }}>
+        <section className="panel" style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 30, color: "#e8c56a", fontWeight: 700 }}>{stats.pct}%</span>
-            <span style={{ fontSize: 14, color: "#a89a83" }}>{stats.done} / {stats.total} miniä valmiina</span>
+            <span style={{ fontFamily: "var(--display)", fontSize: 30, color: "var(--gold)", fontWeight: 700 }}>{stats.pct}%</span>
+            <span style={{ fontSize: 14, color: "var(--text-2)" }}>{stats.done} / {stats.total} miniä valmiina</span>
           </div>
-          <StageBar perStage={stats.perStage} total={stats.total} height={14} />
+          <StageBar perStage={stats.perStage} total={stats.total} showCounts />
           {stats.total > 0 && (
-            <p style={{ margin: "10px 0 0", fontSize: 13, color: "#8a7c66" }}>
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--text-3)" }}>
               Maalaamatta: {stats.total - stats.done} miniä
             </p>
           )}
@@ -1585,31 +1584,31 @@ function Tracker({ session, online, onSignOut }) {
           <div style={{ display: "flex", gap: 8 }}>
             <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
               placeholder="Hae tuotteita, esim. 'High Elf' tai 'Combat Patrol'…"
-              style={{ ...S.input, flex: 1, background: "#211b15", borderRadius: 10, padding: "12px 14px" }} />
+              className="field" style={{ flex: 1, background: "var(--surface)", borderRadius: "var(--r2)", padding: "12px 14px" }} />
             <button onClick={doSearch} disabled={searching} style={{
-              background: searching ? "#4a3c28" : "linear-gradient(135deg,#8c2f2f,#6e2020)",
-              color: "#f5e9d0", border: "1px solid #a54040", borderRadius: 10,
-              padding: "0 18px", fontWeight: 700, fontSize: 15, cursor: searching ? "wait" : "pointer", fontFamily: "inherit", flexShrink: 0,
+              background: searching ? "var(--line)" : "linear-gradient(135deg,#A33B3B,#7E2626)",
+              color: "#FBEDED", border: "1px solid #C05050", borderRadius: "var(--r2)",
+              padding: "0 18px", fontWeight: 700, fontSize: 15, cursor: searching ? "wait" : "pointer", flexShrink: 0,
             }}>{searching ? "Haetaan…" : "Hae"}</button>
           </div>
 
-          <button onClick={() => setManualOpen(v => !v)} style={{ ...S.ghost, marginTop: 6 }}>
+          <button onClick={() => setManualOpen(v => !v)} className="btn-ghost" style={{ marginTop: 6 }}>
             {manualOpen ? "Sulje käsinlisäys" : "Tai lisää tuote käsin"}
           </button>
 
           {manualOpen && (
-            <div className="card-in" style={{ ...S.panel, borderRadius: 10, padding: 12, marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
-              <input value={manual.product} onChange={e => setManual({ ...manual, product: e.target.value })} placeholder="Tuotteen nimi" style={S.input} />
-              <select value={manual.system} onChange={e => setManual({ ...manual, system: e.target.value })} style={S.input}>
+            <div className="rise" className="panel" style={{ borderRadius: "var(--r2)", padding: 12, marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+              <input value={manual.product} onChange={e => setManual({ ...manual, product: e.target.value })} placeholder="Tuotteen nimi" className="field" />
+              <select value={manual.system} onChange={e => setManual({ ...manual, system: e.target.value })} className="field">
                 {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <input value={manual.faction} onChange={e => setManual({ ...manual, faction: e.target.value })}
-                list="fac-manual" placeholder="Rotu / armeija, esim. High Elves (valinnainen)" style={S.input} />
+                list="fac-manual" placeholder="Rotu / armeija, esim. High Elves (valinnainen)" className="field" />
               <datalist id="fac-manual">
                 {[...(factionsBySystem.get(manual.system) || [])].map(f => <option key={f} value={f} />)}
               </datalist>
 
-              <div style={{ fontSize: 11, color: "#6e5f4d", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>
                 Miniatyyrit
               </div>
 
@@ -1617,53 +1616,53 @@ function Tracker({ session, online, onSignOut }) {
                 <div key={u.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <input value={u.name} onChange={e => setManualRow(u.id, { name: e.target.value })}
                     onKeyDown={e => { if (e.key === "Enter" && i === manual.units.length - 1) addManualRow(); }}
-                    placeholder={i === 0 ? "Miniatyyrin nimi, esim. Clanrats" : "Miniatyyrin nimi"} style={{ ...S.input, flex: 1 }} />
+                    placeholder={i === 0 ? "Miniatyyrin nimi, esim. Clanrats" : "Miniatyyrin nimi"} className="field" style={{ flex: 1 }} />
                   <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
                     onChange={e => setManualRow(u.id, { count: e.target.value })}
-                    style={{ ...S.input, width: 68, flexShrink: 0 }} />
+                    className="field" style={{ width: 68, flexShrink: 0 }} />
                   <button onClick={() => removeManualRow(u.id)} disabled={manual.units.length === 1}
                     aria-label="Poista rivi" title="Poista rivi" style={{
                       background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
-                      color: manual.units.length === 1 ? "#3a2f22" : "#6e5f4d",
+                      color: manual.units.length === 1 ? "var(--line-soft)" : "var(--text-3)",
                       fontSize: 18, lineHeight: 1, cursor: manual.units.length === 1 ? "default" : "pointer",
                     }}>×</button>
                 </div>
               ))}
 
-              <button onClick={addManualRow} style={{ ...S.ghost, alignSelf: "flex-start", textDecoration: "none", border: "1px dashed #4a3c28", borderRadius: 8, padding: "7px 12px", fontSize: 13 }}>
+              <button onClick={addManualRow} className="btn-ghost" style={{ alignSelf: "flex-start", textDecoration: "none", border: "1px dashed var(--line)", borderRadius: "var(--r2)", padding: "7px 12px", fontSize: 13 }}>
                 + Lisää miniatyyri
               </button>
 
               <button onClick={addManual} disabled={!manualValid} style={{
-                background: manualValid ? "#3a2f22" : "#241d16",
-                border: `1px solid ${manualValid ? "#5a4930" : "#3a2f22"}`, borderRadius: 8, padding: "10px",
-                color: manualValid ? "#e8c56a" : "#5a5248", fontWeight: 700,
-                cursor: manualValid ? "pointer" : "default", fontFamily: "inherit", marginTop: 2,
+                background: manualValid ? "var(--line-soft)" : "var(--surface-2)",
+                border: `1px solid ${manualValid ? "var(--surface-3)" : "var(--line-soft)"}`, borderRadius: "var(--r2)", padding: "10px",
+                color: manualValid ? "var(--gold)" : "var(--text-4)", fontWeight: 700,
+                cursor: manualValid ? "pointer" : "default", marginTop: 2,
               }}>
                 {manualValid ? `Lisää urakkaan (${manualTotal} miniä)` : "Lisää urakkaan"}
               </button>
             </div>
           )}
 
-          {searchError && <p style={{ color: "#d98a8a", fontSize: 14, margin: "8px 0 0" }}>{searchError}</p>}
+          {searchError && <p style={{ color: "var(--err)", fontSize: 14, margin: "8px 0 0" }}>{searchError}</p>}
 
           {failed.length > 0 && (
-            <p style={{ color: "#d9a86a", fontSize: 13, margin: "8px 0 0", lineHeight: 1.5 }}>
+            <p style={{ color: "var(--warn)", fontSize: 13, margin: "8px 0 0", lineHeight: 1.5 }}>
               Sisältöä ei saatu selville: {failed.join(", ")}. Voit lisätä nämä käsin.
             </p>
           )}
 
           {/* ---------- SISÄLTÖJEN ERÄHAKU KÄYNNISSÄ ---------- */}
           {batch && (
-            <div className="card-in" style={{ ...S.panel, padding: 14, marginTop: 10 }}>
-              <div style={{ fontSize: 14, color: "#efe6d3", marginBottom: 8 }}>
+            <div className="rise" className="panel" style={{ padding: 14, marginTop: 10 }}>
+              <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 8 }}>
                 ⏳ Haetaan sisältöjä… {batch.done + 1} / {batch.total}
               </div>
-              <div style={{ fontSize: 12, color: "#8a7c66", marginBottom: 8 }}>{batch.name}</div>
-              <div style={{ height: 6, borderRadius: 3, background: "#2c251c", overflow: "hidden" }}>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 8 }}>{batch.name}</div>
+              <div style={{ height: 6, borderRadius: "var(--r1)", background: "var(--surface-2)", overflow: "hidden" }}>
                 <div style={{
                   width: `${(batch.done / batch.total) * 100}%`, height: "100%",
-                  background: "linear-gradient(90deg,#7a5c1e,#e8c56a)", transition: "width .3s ease",
+                  background: "linear-gradient(90deg,var(--gold-deep),var(--gold))", transition: "width .3s ease",
                 }} />
               </div>
             </div>
@@ -1671,10 +1670,10 @@ function Tracker({ session, online, onSignOut }) {
 
           {/* ---------- HAKUTULOKSET: MONIVALINTA ---------- */}
           {matches && !batch && (
-            <div className="card-in" style={{ ...S.panel, padding: 0, marginTop: 10, overflow: "hidden" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: "1px solid #3a2f22" }}>
-                <span style={{ fontSize: 13, color: "#a89a83" }}>{matches.length} tuotetta — valitse lisättävät:</span>
-                <button onClick={() => setSelected(allSelected ? [] : matches.map(m => m.id))} style={{ ...S.ghost, fontSize: 12 }}>
+            <div className="rise" className="panel" style={{ padding: 0, marginTop: 10, overflow: "hidden" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--line-soft)" }}>
+                <span style={{ fontSize: 13, color: "var(--text-2)" }}>{matches.length} tuotetta — valitse lisättävät:</span>
+                <button onClick={() => setSelected(allSelected ? [] : matches.map(m => m.id))} className="btn-ghost" style={{ fontSize: 12 }}>
                   {allSelected ? "Tyhjennä" : "Valitse kaikki"}
                 </button>
               </div>
@@ -1682,49 +1681,36 @@ function Tracker({ session, online, onSignOut }) {
               {matches.map(m => {
                 const sel = selected.includes(m.id);
                 return (
-                  <button key={m.id} className="match-row" onClick={() => toggleSelect(m.id)} aria-pressed={sel} style={{
-                    display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
-                    background: sel ? "#2a2216" : "transparent", border: "none",
-                    borderBottom: "1px solid #2c251c", padding: "11px 14px", fontFamily: "inherit", cursor: "pointer",
-                  }}>
-                    <span aria-hidden="true" style={{
-                      width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-                      border: `2px solid ${sel ? "#e8c56a" : "#4a3c28"}`,
-                      background: sel ? "#7a5c1e" : "transparent", color: "#fff8e6",
-                      fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>{sel ? "✓" : ""}</span>
+                  <button key={m.id} className="row" onClick={() => toggleSelect(m.id)} aria-pressed={sel}
+                    style={{ background: sel ? "var(--surface-3)" : undefined }}>
+                    <span aria-hidden="true" className={"checkbox" + (sel ? " is-on" : "")}>{sel ? "✓" : ""}</span>
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: sel ? "#efe6d3" : "#c4b596" }}>{m.product}</span>
-                      <span style={{ fontSize: 12, color: "#9c7c34" }}>{m.system}{m.faction ? ` · ${m.faction}` : ""}</span>
+                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: sel ? "var(--text)" : "var(--text-2)" }}>{m.product}</span>
+                      <span style={{ fontSize: 12, color: "var(--gold-dim)" }}>{m.system}{m.faction ? ` · ${m.faction}` : ""}</span>
                     </span>
                   </button>
                 );
               })}
 
-              <div style={{ display: "flex", gap: 8, padding: 10, background: "#1c1712" }}>
-                <button onClick={fetchSelected} disabled={!selected.length} style={{
-                  ...S.gold, flex: 1, padding: "10px",
-                  opacity: selected.length ? 1 : 0.4, cursor: selected.length ? "pointer" : "default",
-                }}>
+              <div style={{ display: "flex", gap: 8, padding: 10, background: "var(--surface-2)" }}>
+                <button onClick={fetchSelected} disabled={!selected.length}
+                  className="btn btn-gold" style={{ flex: 1 }}>
                   {selected.length ? `Hae sisällöt (${selected.length})` : "Valitse vähintään yksi"}
                 </button>
-                <button onClick={() => { setMatches(null); setSelected([]); }} style={{
-                  background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8,
-                  padding: "10px 14px", color: "#a89a83", cursor: "pointer", fontFamily: "inherit",
-                }}>Sulje</button>
+                <button onClick={() => { setMatches(null); setSelected([]); }} className="btn btn-quiet">Sulje</button>
               </div>
             </div>
           )}
 
           {/* ---------- VAHVISTUSJONO: YKSI TUOTE KERRALLAAN ---------- */}
           {current && (
-            <div className="card-in" style={{ background: "#241d14", border: "1px solid #7a5c1e", borderRadius: 12, padding: 14, marginTop: 10 }}>
+            <div className="rise" style={{ background: "var(--surface-2)", border: "1px solid var(--gold-deep)", borderRadius: "var(--r3)", padding: 14, marginTop: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
-                <span style={{ fontSize: 11, color: "#9c7c34", textTransform: "uppercase", letterSpacing: "0.14em" }}>
+                <span style={{ fontSize: 11, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
                   Tarkista määrät
                 </span>
                 {queue.length > 1 && (
-                  <span style={{ fontSize: 12, color: "#8a7c66" }}>{queueIdx + 1} / {queue.length}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>{queueIdx + 1} / {queue.length}</span>
                 )}
               </div>
 
@@ -1732,19 +1718,19 @@ function Tracker({ session, online, onSignOut }) {
                 <div style={{ display: "flex", gap: 3, marginBottom: 10 }}>
                   {queue.map((_, i) => (
                     <div key={i} style={{
-                      flex: 1, height: 3, borderRadius: 2,
-                      background: i < queueIdx ? "#7a5c1e" : i === queueIdx ? "#e8c56a" : "#3a2f22",
+                      flex: 1, height: 3, borderRadius: "2px",
+                      background: i < queueIdx ? "var(--gold-deep)" : i === queueIdx ? "var(--gold)" : "var(--line-soft)",
                     }} />
                   ))}
                 </div>
               )}
 
-              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 17, color: "#efe6d3", fontWeight: 700 }}>{current.product}</div>
-              <div style={{ fontSize: 13, color: "#9c7c34", marginBottom: 8 }}>{current.system}</div>
+              <div style={{ fontFamily: "var(--display)", fontSize: 17, color: "var(--text)", fontWeight: 700 }}>{current.product}</div>
+              <div style={{ fontSize: 13, color: "var(--gold-dim)", marginBottom: 8 }}>{current.system}</div>
               <input value={current.faction || ""} list="fac-queue" placeholder="Rotu / armeija"
                 aria-label="Rotu tai armeija"
                 onChange={e => setQueue(q => q.map((it, i) => i !== queueIdx ? it : { ...it, faction: e.target.value }))}
-                style={{ ...S.input, padding: "7px 10px", fontSize: 13, marginBottom: 10 }} />
+                className="field" style={{ padding: "7px 10px", fontSize: 13, marginBottom: 10 }} />
               <datalist id="fac-queue">
                 {[...(factionsBySystem.get(current.system) || [])].map(f => <option key={f} value={f} />)}
               </datalist>
@@ -1753,37 +1739,37 @@ function Tracker({ session, online, onSignOut }) {
                 <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
                     onChange={e => patchQueueUnit(u.id, { count: e.target.value })}
-                    style={{ ...S.input, width: 62, padding: "7px 8px", fontSize: 14, flexShrink: 0 }} />
+                    className="field" style={{ width: 62, padding: "7px 8px", fontSize: 14, flexShrink: 0 }} />
                   <input value={u.name} aria-label="Miniatyyrin nimi"
                     onChange={e => patchQueueUnit(u.id, { name: e.target.value })}
-                    style={{ ...S.input, flex: 1, padding: "7px 10px", fontSize: 14 }} />
+                    className="field" style={{ flex: 1, padding: "7px 10px", fontSize: 14 }} />
                   <button onClick={() => removeQueueUnit(u.id)} aria-label="Poista rivi" title="Poista rivi" style={{
-                    background: "none", border: "none", color: "#6e5f4d", fontSize: 18,
+                    background: "none", border: "none", color: "var(--text-3)", fontSize: 18,
                     lineHeight: 1, cursor: "pointer", padding: "6px 4px", flexShrink: 0,
                   }}>×</button>
                 </div>
               ))}
 
-              <button onClick={addQueueUnit} style={{ ...S.ghost, textDecoration: "none", border: "1px dashed #4a3c28", borderRadius: 8, padding: "6px 10px", fontSize: 12, marginTop: 2 }}>
+              <button onClick={addQueueUnit} className="btn-ghost" style={{ textDecoration: "none", border: "1px dashed var(--line)", borderRadius: "var(--r2)", padding: "6px 10px", fontSize: 12, marginTop: 2 }}>
                 + Lisää rivi
               </button>
 
-              <p style={{ fontSize: 12, color: "#a89a83", margin: "10px 0", lineHeight: 1.5 }}>
+              <p style={{ fontSize: 12, color: "var(--text-2)", margin: "10px 0", lineHeight: 1.5 }}>
                 Vertaa laatikon kylkeen — tekoälyhaku voi erehtyä. Korjaa määrät tai poista ylimääräiset rivit ennen lisäystä.
               </p>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={confirmCurrent} style={{ ...S.gold, flex: "1 1 160px" }}>
+                <button onClick={confirmCurrent} className="btn btn-gold" style={{ flex: "1 1 160px" }}>
                   Lisää urakkaan ({current.units.reduce((a, u) => a + clampCount(u.count), 0)} miniä)
                 </button>
                 <button onClick={advance} style={{
-                  background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 8,
-                  padding: "10px 14px", color: "#a89a83", cursor: "pointer", fontFamily: "inherit",
+                  background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r2)",
+                  padding: "10px 14px", color: "var(--text-2)", cursor: "pointer",
                 }}>Ohita</button>
                 {queue.length > 1 && (
                   <button onClick={() => { setQueue([]); setQueueIdx(0); }} style={{
-                    background: "none", border: "none", color: "#6e5f4d", fontSize: 12,
-                    cursor: "pointer", textDecoration: "underline", fontFamily: "inherit",
+                    background: "none", border: "none", color: "var(--text-3)", fontSize: 12,
+                    cursor: "pointer", textDecoration: "underline",
                   }}>Peru loput</button>
                 )}
               </div>
@@ -1794,20 +1780,20 @@ function Tracker({ session, online, onSignOut }) {
         {/* ---------- SIVELLIN ---------- */}
         {stats.total > 0 && (
           <section style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, color: "#a89a83", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
               Sivellin — valitse mitä napautus tekee minille
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               <button onClick={() => setBrush(null)} style={{
-                background: brush === null ? "#3a2f22" : "#211b15",
-                border: `1px solid ${brush === null ? "#e8c56a" : "#3a2f22"}`, borderRadius: 8, padding: "7px 10px",
-                color: brush === null ? "#e8c56a" : "#a89a83", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                background: brush === null ? "var(--line-soft)" : "var(--surface)",
+                border: `1px solid ${brush === null ? "var(--gold)" : "var(--line-soft)"}`, borderRadius: "var(--r2)", padding: "7px 10px",
+                color: brush === null ? "var(--gold)" : "var(--text-2)", fontSize: 13, fontWeight: 700, cursor: "pointer",
               }}>→ Seuraava vaihe</button>
               {STAGES.map(st => (
                 <button key={st.key} onClick={() => setBrush(st.key)} style={{
-                  background: brush === st.key ? st.bg : "#211b15",
-                  border: `1px solid ${brush === st.key ? st.color : "#3a2f22"}`, borderRadius: 8, padding: "7px 10px",
-                  color: brush === st.key ? st.color : "#a89a83", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                  background: brush === st.key ? st.bg : "var(--surface)",
+                  border: `1px solid ${brush === st.key ? st.color : "var(--line-soft)"}`, borderRadius: "var(--r2)", padding: "7px 10px",
+                  color: brush === st.key ? st.color : "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer",
                 }}>{st.name}</button>
               ))}
             </div>
@@ -1816,20 +1802,28 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- TYHJÄ TILA ---------- */}
         {loaded && products.length === 0 && (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "#8a7c66" }}>
+          <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-3)" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🎨</div>
             <p style={{ margin: 0, fontSize: 15 }}>Urakka on tyhjä. Hae ensimmäinen tuote yltä —<br />esim. "High Elf" tai "Combat Patrol Tyranids".</p>
           </div>
         )}
 
         {/* ---------- TUOTELISTAN TYÖKALUT ---------- */}
-        {products.length > 1 && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-            <button onClick={() => setOpenProds(openProds.length ? [] : products.map(p => p.id))} style={{
-              background: "#211b15", border: "1px solid #3a2f22", borderRadius: 8,
-              padding: "6px 12px", color: "#9c7c34", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-            }}>
-              {openProds.length ? "Sulje kaikki" : "Avaa kaikki"}
+        {products.length > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
+            <span className="eyebrow">Kokoelma</span>
+            <button
+              onClick={() => {
+                const anyOpen = openCats.length || openFacs.length || openProds.length;
+                if (anyOpen) { setOpenCats([]); setOpenFacs([]); setOpenProds([]); }
+                else {
+                  setOpenCats(grouped.map(g => g.system));
+                  setOpenFacs(grouped.flatMap(g => g.factions.map(f => g.system + "::" + f.key)));
+                  setOpenProds(products.map(p => p.id));
+                }
+              }}
+              className="btn btn-quiet btn-sm">
+              {(openCats.length || openFacs.length || openProds.length) ? "Sulje kaikki" : "Avaa kaikki"}
             </button>
           </div>
         )}
@@ -1842,22 +1836,19 @@ function Tracker({ session, online, onSignOut }) {
           return (
             <section key={system} style={{ marginBottom: cOpen ? 24 : 10 }}>
               {/* --- taso 1: pelijärjestelmä --- */}
-              <button onClick={() => toggleCat(system)} aria-expanded={cOpen} style={{
-                display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 8,
-                background: "none", border: "none", borderBottom: "1px solid #4a3c28",
-                padding: "0 0 6px", marginBottom: cOpen ? 12 : 0, cursor: "pointer",
-                fontFamily: "inherit", textAlign: "left",
-              }}>
+              <button onClick={() => toggleCat(system)} aria-expanded={cOpen}
+                className="acc-head"
+                style={{ borderBottom: "1px solid var(--line)", marginBottom: cOpen ? 10 : 0 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                   <Chevron open={cOpen} />
-                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: 16, color: "#c9a554", letterSpacing: "0.06em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontFamily: "var(--display)", fontSize: 16, color: "var(--gold-mid)", letterSpacing: "0.06em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {system}
                   </span>
-                  <span style={{ fontSize: 12, color: "#6e5f4d", flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-3)", flexShrink: 0 }}>
                     ({factions.length} {factions.length === 1 ? "rotu" : "rotua"})
                   </span>
                 </span>
-                <span style={{ fontSize: 13, color: "#a89a83", flexShrink: 0 }}>{c.pct}% · {c.total} miniä</span>
+                <span style={{ fontSize: 13, color: "var(--text-2)", flexShrink: 0 }}>{c.pct}% · {c.total} miniä</span>
               </button>
 
               {cOpen && factions.map(({ key, name, items }) => {
@@ -1868,67 +1859,61 @@ function Tracker({ session, online, onSignOut }) {
                 return (
                   <div key={fid} style={{ marginBottom: fOpen ? 14 : 6 }}>
                     {/* --- taso 2: rotu / armeija --- */}
-                    <button onClick={() => toggleFac(fid)} aria-expanded={fOpen} style={{
-                      display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 8,
-                      background: "none", border: "none", padding: "4px 0 4px 4px",
-                      marginBottom: fOpen ? 8 : 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-                    }}>
+                    <button onClick={() => toggleFac(fid)} aria-expanded={fOpen}
+                      className="acc-head" style={{ paddingLeft: 6, marginBottom: fOpen ? 6 : 0 }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                        <Chevron open={fOpen} color={undef ? "#6e5f4d" : "#8a6b2c"} />
+                        <Chevron open={fOpen} />
                         <span style={{
                           fontSize: 14, fontWeight: 700, letterSpacing: "0.04em",
-                          color: undef ? "#6e5f4d" : "#a89a83",
+                          color: undef ? "var(--text-3)" : "var(--text-2)",
                           fontStyle: undef ? "italic" : "normal",
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>{name}</span>
-                        <span style={{ fontSize: 11, color: "#5a5248", flexShrink: 0 }}>({items.length})</span>
+                        <span style={{ fontSize: 11, color: "var(--text-4)", flexShrink: 0 }}>({items.length})</span>
                       </span>
                       <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                        <span style={{ width: 46 }}><StageBar perStage={f.perStage} total={f.total} height={5} /></span>
-                        <span style={{ fontSize: 12, color: "#8a7c66", minWidth: 30, textAlign: "right" }}>{f.pct}%</span>
+                        <span style={{ width: 46 }}><StageBar perStage={f.perStage} total={f.total} slim /></span>
+                        <span style={{ fontSize: 12, color: "var(--text-3)", minWidth: 30, textAlign: "right" }}>{f.pct}%</span>
                       </span>
                     </button>
 
                     {fOpen && (
-                      <div style={{ borderLeft: "1px solid #2c251c", paddingLeft: 10, marginLeft: 4 }}>
+                      <div style={{ borderLeft: "1px solid var(--surface-2)", paddingLeft: 10, marginLeft: 4 }}>
                         {items.map(p => {
                           const t = tally([p]);
                           const pDoneAll = t.pct === 100 && t.total > 0;
                           const open = prodOpen(p.id);
                           const facList = [...(factionsBySystem.get(SYSTEMS.includes(p.system) ? p.system : "Muu") || [])];
                           return (
-                            <article key={p.id} id={"prod-" + p.id} className={"card-in" + (flash === p.id ? " flash" : "")} style={{
-                              background: "#211b15", border: `1px solid ${pDoneAll ? "#7a5c1e" : "#3a2f22"}`,
-                              borderRadius: 12, padding: 12, marginBottom: 10,
-                              animation: pDoneAll && flash !== p.id ? "goldpulse 2.5s ease infinite" : undefined,
-                            }}>
+                            <article key={p.id} id={"prod-" + p.id} className={"card rise" + (pDoneAll ? " is-done" : "") + (flash === p.id ? " flash" : "") + (pDoneAll && flash !== p.id ? " is-celebrating" : "")}
+                              style={{ padding: 12, marginBottom: 10 }}>
                               {/* --- taso 3: tuote --- */}
                               <button onClick={() => toggleProd(p.id)} aria-expanded={open} style={{
                                 display: "block", width: "100%", background: "none", border: "none",
-                                padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                                padding: 0, cursor: "pointer", textAlign: "left",
                               }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                   <span style={{ display: "flex", gap: 8, minWidth: 0 }}>
-                                    <span style={{ paddingTop: 7 }}><Chevron open={open} color={pDoneAll ? "#e8c56a" : "#9c7c34"} /></span>
+                                    <span style={{ paddingTop: 7 }}><Chevron open={open} /></span>
                                     <span style={{ minWidth: 0 }}>
-                                      <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: 16, margin: 0, color: pDoneAll ? "#e8c56a" : "#efe6d3", lineHeight: 1.3 }}>
+                                      <h3 style={{ fontFamily: "var(--display)", fontSize: 16, margin: 0, color: pDoneAll ? "var(--gold)" : "var(--text)", lineHeight: 1.3 }}>
                                         {pDoneAll && "★ "}{p.name}
                                       </h3>
                                     </span>
                                   </span>
                                   <span style={{ textAlign: "right", flexShrink: 0 }}>
-                                    <span style={{ display: "block", fontFamily: "'Cinzel', serif", fontSize: 19, fontWeight: 700, color: pDoneAll ? "#e8c56a" : "#c4b596", lineHeight: 1.1 }}>{t.pct}%</span>
-                                    <span style={{ fontSize: 11, color: "#8a7c66" }}>{t.done}/{t.total} valmis</span>
+                                    <span style={{ display: "block", fontFamily: "var(--display)", fontSize: 19, fontWeight: 700, color: pDoneAll ? "var(--gold)" : "var(--text-2)", lineHeight: 1.1 }}>{t.pct}%</span>
+                                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{t.done}/{t.total} valmis</span>
                                   </span>
                                 </div>
                                 <div style={{ marginTop: 8 }}>
-                                  <StageBar perStage={t.perStage} total={t.total} height={8} />
+                                  <StageBar perStage={t.perStage} total={t.total} slim />
                                 </div>
                               </button>
 
                               {/* --- avattu sisältö --- */}
                               {open && (
-                                <div className="card-in">
+                                <div className="rise">
                                   {p.units.map(u => {
                                     const uDone = u.minis.filter(s => s === 4).length;
                                     const editing = editProds.includes(p.id);
@@ -1944,11 +1929,11 @@ function Tracker({ session, online, onSignOut }) {
                                           />
                                         ) : (
                                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
-                                            <span style={{ fontSize: 14, fontWeight: 700, color: "#d9d2c5" }}>
-                                              {u.name} <span style={{ color: "#8a7c66", fontWeight: 400 }}>({uDone}/{u.minis.length} valmis)</span>
+                                            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                                              {u.name} <span style={{ color: "var(--text-3)", fontWeight: 400 }}>({uDone}/{u.minis.length} valmis)</span>
                                             </span>
                                             <button onClick={() => setAllInUnit(p.id, u.id)}
-                                              style={{ background: "#2c251c", border: "1px solid #4a3c28", borderRadius: 6, padding: "4px 8px", color: "#c4b596", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                                              style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r1)", padding: "4px 8px", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
                                               Sivele kaikki
                                             </button>
                                           </div>
@@ -1957,14 +1942,9 @@ function Tracker({ session, online, onSignOut }) {
                                           {u.minis.map((s, i) => {
                                             const st = STAGES[s];
                                             return (
-                                              <button key={i} className="mini-chip" onClick={() => setMini(p.id, u.id, i)}
+                                              <button key={i} className={"chip chip-" + s} onClick={() => setMini(p.id, u.id, i)}
                                                 aria-label={`${u.name} #${i + 1}: ${st.name}`} title={`#${i + 1}: ${st.name} — ${st.desc}`}
-                                                style={{
-                                                  width: 34, height: 34, borderRadius: "50%", background: st.bg,
-                                                  border: `2px solid ${st.color}`, color: st.color, fontSize: 10, fontWeight: 700,
-                                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                                  boxShadow: s === 4 ? "0 0 6px rgba(232,197,106,.5)" : "none",
-                                                }}>
+                                                >
                                                 {s === 4 ? "★" : st.short}
                                               </button>
                                             );
@@ -1977,14 +1957,13 @@ function Tracker({ session, online, onSignOut }) {
                                           aria-expanded={openRecipes.includes(u.id)}
                                           style={{
                                             display: "flex", alignItems: "center", gap: 5, marginTop: 8,
-                                            background: "none", border: "none", padding: "2px 0", cursor: "pointer",
-                                            fontFamily: "inherit", fontSize: 11.5,
-                                            color: u.recipe ? "#9c7c34" : "#5a5248",
+                                            background: "none", border: "none", padding: "2px 0", cursor: "pointer", fontSize: 11.5,
+                                            color: u.recipe ? "var(--gold-dim)" : "var(--text-4)",
                                           }}>
-                                          <Chevron open={openRecipes.includes(u.id)} color={u.recipe ? "#9c7c34" : "#5a5248"} />
+                                          <Chevron open={openRecipes.includes(u.id)} />
                                           🎨 {u.recipe ? "Maaliohje" : "Lisää maaliohje"}
                                           {u.recipe && !openRecipes.includes(u.id) && (
-                                            <span style={{ color: "#5a5248", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
+                                            <span style={{ color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
                                               — {u.recipe.split("\n")[0]}
                                             </span>
                                           )}
@@ -2002,11 +1981,11 @@ function Tracker({ session, online, onSignOut }) {
                                   <button
                                     onClick={() => setEditProds(prev => prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id])}
                                     style={{
-                                      marginTop: 12, background: editProds.includes(p.id) ? "#3a2f22" : "none",
-                                      border: `1px ${editProds.includes(p.id) ? "solid" : "dashed"} #4a3c28`,
-                                      borderRadius: 7, padding: "6px 11px",
-                                      color: editProds.includes(p.id) ? "#e8c56a" : "#6e5f4d",
-                                      fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                                      marginTop: 12, background: editProds.includes(p.id) ? "var(--line-soft)" : "none",
+                                      border: `1px ${editProds.includes(p.id) ? "solid" : "dashed"} var(--line)`,
+                                      borderRadius: "var(--r1)", padding: "6px 11px",
+                                      color: editProds.includes(p.id) ? "var(--gold)" : "var(--text-3)",
+                                      fontSize: 12, cursor: "pointer",
                                     }}>
                                     {editProds.includes(p.id) ? "✓ Valmis muokkaamasta" : "✎ Muokkaa miniatyyrejä"}
                                   </button>
@@ -2015,7 +1994,7 @@ function Tracker({ session, online, onSignOut }) {
                                   <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
                                     <select value={SYSTEMS.includes(p.system) ? p.system : "Muu"} onChange={e => setSystem(p.id, e.target.value)}
                                       aria-label="Pelijärjestelmä"
-                                      style={{ background: "#17130f", border: "1px solid #3a2f22", borderRadius: 6, padding: "5px 8px", color: "#8a7c66", fontSize: 12, fontFamily: "inherit", flex: "1 1 140px", minWidth: 0 }}>
+                                      style={{ background: "var(--bg)", border: "1px solid var(--line-soft)", borderRadius: "var(--r1)", padding: "5px 8px", color: "var(--text-3)", fontSize: 12, flex: "1 1 140px", minWidth: 0 }}>
                                       {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                     <FactionInput
@@ -2023,9 +2002,9 @@ function Tracker({ session, online, onSignOut }) {
                                       onCommit={v => setFaction(p.id, v)}
                                       listId={"fac-" + p.id}
                                       options={facList}
-                                      style={{ background: "#17130f", border: "1px solid #3a2f22", borderRadius: 6, padding: "5px 8px", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }}
+                                      style={{ background: "var(--bg)", border: "1px solid var(--line-soft)", borderRadius: "var(--r1)", padding: "5px 8px", fontSize: 12, boxSizing: "border-box" }}
                                     />
-                                    <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", color: "#6e5f4d", fontSize: 12, cursor: "pointer", padding: 2, textDecoration: "underline", fontFamily: "inherit", flexShrink: 0 }}>
+                                    <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 12, cursor: "pointer", padding: 2, textDecoration: "underline", flexShrink: 0 }}>
                                       poista
                                     </button>
                                   </div>
@@ -2046,25 +2025,22 @@ function Tracker({ session, online, onSignOut }) {
         {/* ---------- SAAVUTUKSET ---------- */}
         {stats.total > 0 && (
           <section id="saavutukset" style={{ marginBottom: 24 }}>
-            <button onClick={() => setAchOpen(v => !v)} aria-expanded={achOpen} style={{
-              display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 8,
-              background: "none", border: "none", borderBottom: "1px solid #4a3c28",
-              padding: "0 0 6px", marginBottom: achOpen ? 12 : 0, cursor: "pointer",
-              fontFamily: "inherit", textAlign: "left",
-            }}>
+            <button onClick={() => setAchOpen(v => !v)} aria-expanded={achOpen}
+              className="acc-head"
+              style={{ borderBottom: "1px solid var(--line)", marginBottom: achOpen ? 10 : 0 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Chevron open={achOpen} />
-                <span style={{ fontFamily: "'Cinzel', serif", fontSize: 16, color: "#c9a554", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                <span style={{ fontFamily: "var(--display)", fontSize: 16, color: "var(--gold-mid)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
                   Saavutukset
                 </span>
               </span>
-              <span style={{ fontSize: 13, color: "#a89a83" }}>{earnedCount} / {ACHIEVEMENTS.length}</span>
+              <span style={{ fontSize: 13, color: "var(--text-2)" }}>{earnedCount} / {ACHIEVEMENTS.length}</span>
             </button>
 
             {achOpen && (
-              <div className="card-in">
-                <div style={{ height: 6, borderRadius: 3, background: "#2c251c", overflow: "hidden", marginBottom: 12 }}>
-                  <div style={{ height: "100%", width: `${(earnedCount / ACHIEVEMENTS.length) * 100}%`, background: "linear-gradient(90deg,#7a5c1e,#e8c56a)", transition: "width .4s ease" }} />
+              <div className="rise">
+                <div style={{ height: 6, borderRadius: "var(--r1)", background: "var(--surface-2)", overflow: "hidden", marginBottom: 12 }}>
+                  <div style={{ height: "100%", width: `${(earnedCount / ACHIEVEMENTS.length) * 100}%`, background: "linear-gradient(90deg,var(--gold-deep),var(--gold))", transition: "width .4s ease" }} />
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
@@ -2074,22 +2050,17 @@ function Tracker({ session, online, onSignOut }) {
                   ).map(a => {
                     const T = TIERS[a.tier];
                     return (
-                      <div key={a.id} title={a.desc} style={{
-                        background: a.unlocked ? T.bg : "#1c1712",
-                        border: `1px solid ${a.unlocked ? T.color : "#2c251c"}`,
-                        borderRadius: 10, padding: "10px 11px",
-                        opacity: a.unlocked ? 1 : 0.75,
-                      }}>
+                      <div key={a.id} title={a.desc}
+                        className={"ach" + (a.unlocked ? " is-unlocked" : "")}
+                        style={a.unlocked ? { background: T.bg, borderColor: T.color } : undefined}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-                          <span style={{ fontSize: 18, flexShrink: 0, filter: a.unlocked ? "none" : "grayscale(1)", opacity: a.unlocked ? 1 : 0.45 }}>
-                            {a.icon}
-                          </span>
+                          <span className="ach-icon">{a.icon}</span>
                           <span style={{
                             fontSize: 12.5, fontWeight: 700, lineHeight: 1.25,
-                            color: a.unlocked ? T.color : "#6e5f4d",
+                            color: a.unlocked ? T.color : "var(--text-3)",
                           }}>{a.name}</span>
                         </div>
-                        <div style={{ fontSize: 10.5, color: a.unlocked ? "#8a7c66" : "#5a5248", lineHeight: 1.4, minHeight: 28 }}>
+                        <div style={{ fontSize: 10.5, color: a.unlocked ? "var(--text-3)" : "var(--text-4)", lineHeight: 1.4, minHeight: 28 }}>
                           {a.desc}
                         </div>
                         {a.unlocked ? (
@@ -2098,10 +2069,10 @@ function Tracker({ session, online, onSignOut }) {
                           </div>
                         ) : (
                           <div style={{ marginTop: 6 }}>
-                            <div style={{ height: 3, borderRadius: 2, background: "#2c251c", overflow: "hidden" }}>
+                            <div style={{ height: 3, borderRadius: "2px", background: "var(--surface-2)", overflow: "hidden" }}>
                               <div style={{ height: "100%", width: `${(a.cur / a.target) * 100}%`, background: T.color, opacity: 0.6 }} />
                             </div>
-                            <div style={{ fontSize: 9.5, color: "#5a5248", marginTop: 3 }}>{a.cur} / {a.target}</div>
+                            <div style={{ fontSize: 9.5, color: "var(--text-4)", marginTop: 3 }}>{a.cur} / {a.target}</div>
                           </div>
                         )}
                       </div>
@@ -2115,21 +2086,21 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- LÄMPÖKARTTA (pohjalla) ---------- */}
         {stats.total > 0 && (
-          <section style={{ ...S.panel, marginBottom: 20 }}>
+          <section className="panel" style={{ marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, color: "#6e5f4d", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              <span style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
                 Viimeiset {HEATMAP_WEEKS} viikkoa
               </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "#6e5f4d" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
                 vähän
-                {["#241d16", "#5a4520", "#8a6b2c", "#c9a554", "#e8c56a"].map(c => (
-                  <span key={c} style={{ width: 9, height: 9, borderRadius: 2, background: c, display: "inline-block" }} />
+                {["var(--surface-2)", "#5A4520", "#8A6B2C", "var(--gold-mid)", "var(--gold)"].map(c => (
+                  <span key={c} style={{ width: 9, height: 9, borderRadius: "2px", background: c, display: "inline-block" }} />
                 ))}
                 paljon
               </span>
             </div>
             <Heatmap byDay={momentum.byDay} />
-            <div style={{ marginTop: 8, fontSize: 11, color: "#6e5f4d" }}>
+            <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
               {momentum.best > 0
                 ? `Pisin putki: ${momentum.best} pv · ${momentum.byDay.size} aktiivista päivää · yhteensä ${momentum.totalSteps} askelta`
                 : "Ei vielä merkintöjä"}
@@ -2139,8 +2110,8 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- SELITE ---------- */}
         {stats.total > 0 && (
-          <footer style={{ marginTop: 20, borderTop: "1px solid #3a2f22", paddingTop: 12 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", fontSize: 12, color: "#a89a83" }}>
+          <footer style={{ marginTop: 20, borderTop: "1px solid var(--line-soft)", paddingTop: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", fontSize: 12, color: "var(--text-2)" }}>
               {STAGES.map(st => (
                 <span key={st.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <span style={{ width: 14, height: 14, borderRadius: "50%", background: st.bg, border: `2px solid ${st.color}`, display: "inline-block" }} />
@@ -2207,9 +2178,9 @@ function App() {
       {!online && (
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60,
-          background: "#4a2020", borderTop: "1px solid #a54040", color: "#f5d0d0",
+          background: "#3A1A1A", borderTop: "1px solid #C05050", color: "#FBEDED",
           padding: "8px 14px", fontSize: 13, textAlign: "center",
-          fontFamily: "'Alegreya Sans', system-ui, sans-serif",
+          fontFamily: "var(--body)",
         }}>
           ● Ei verkkoyhteyttä — muutokset tallentuvat kun yhteys palaa
         </div>
@@ -2217,29 +2188,29 @@ function App() {
       {swUpdate && (
         <div style={{
           position: "fixed", bottom: online ? 12 : 44, left: "50%", transform: "translateX(-50%)", zIndex: 60,
-          background: "#241d14", border: "1px solid #7a5c1e", borderRadius: 10,
+          background: "var(--surface-2)", border: "1px solid var(--gold-deep)", borderRadius: "var(--r2)",
           padding: "8px 10px 8px 14px", display: "flex", alignItems: "center", gap: 10,
-          boxShadow: "0 6px 24px rgba(0,0,0,.5)", fontFamily: "'Alegreya Sans', system-ui, sans-serif",
+          boxShadow: "0 6px 24px rgba(0,0,0,.5)", fontFamily: "var(--body)",
         }}>
-          <span style={{ fontSize: 13, color: "#c4b596" }}>Uusi versio saatavilla</span>
+          <span style={{ fontSize: 13, color: "var(--text-2)" }}>Uusi versio saatavilla</span>
           <button onClick={() => swUpdate.postMessage("skip-waiting")} style={{
-            background: "linear-gradient(135deg,#7a5c1e,#9c7c34)", border: "1px solid #e8c56a",
-            borderRadius: 7, padding: "6px 12px", color: "#fff8e6", fontWeight: 700,
-            fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+            background: "linear-gradient(135deg,var(--gold-deep),var(--gold-dim))", border: "1px solid var(--gold)",
+            borderRadius: "var(--r1)", padding: "6px 12px", color: "#1A1408", fontWeight: 700,
+            fontSize: 13, cursor: "pointer",
           }}>Päivitä</button>
         </div>
       )}
     </>
   );
 
-  const center = { minHeight: "100vh", background: "#17130f", color: "#a89a83", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Alegreya Sans', system-ui, sans-serif", padding: 20, textAlign: "center" };
+  const center = { minHeight: "100vh", background: "var(--bg)", color: "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--body)", padding: 20, textAlign: "center" };
 
   if (!supa) return (
     <div style={center}>
       <div>
-        <h1 style={{ fontFamily: "'Cinzel', serif", color: "#e8c56a", fontSize: 20 }}>Asetukset puuttuvat</h1>
+        <h1 style={{ fontFamily: "var(--display)", color: "var(--gold)", fontSize: 20 }}>Asetukset puuttuvat</h1>
         <p style={{ maxWidth: 380, lineHeight: 1.6, fontSize: 14 }}>
-          Täytä <code style={{ color: "#c9a554" }}>SUPABASE_URL</code> ja <code style={{ color: "#c9a554" }}>SUPABASE_ANON_KEY</code> tiedoston <code style={{ color: "#c9a554" }}>index.html</code> alusta.
+          Täytä <code style={{ color: "var(--gold-mid)" }}>SUPABASE_URL</code> ja <code style={{ color: "var(--gold-mid)" }}>SUPABASE_ANON_KEY</code> tiedoston <code style={{ color: "var(--gold-mid)" }}>index.html</code> alusta.
         </p>
       </div>
     </div>

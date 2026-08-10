@@ -1,22 +1,503 @@
 /* =============================================================
    Maalausurakka — tyylit
-   Sovelluksen väripaletti ja komponenttityylit ovat pääosin
-   JSX:n sisällä (inline-tyylit). Tänne kuuluvat globaalit säännöt,
-   animaatiot ja pseudoluokat, joita inline-tyyleillä ei voi tehdä.
+
+   Suunta: työpöydän mittaristo, ei pergamentti.
+   Tausta on neutraali grafiitti; väri tulee maalausvaiheista, jotka
+   ovat sovelluksen varsinainen informaatio. Kulta on varattu
+   yksinomaan "valmis"-tilalle, jolloin se on ansaittu eikä koriste.
    ============================================================= */
 
-html, body { margin: 0; background: #17130f; }
-  @keyframes goldpulse { 0%,100%{box-shadow:0 0 0 0 rgba(232,197,106,0);} 50%{box-shadow:0 0 14px 2px rgba(232,197,106,.55);} }
-  @keyframes risein { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
-  @keyframes bannerdrop { from{opacity:0;transform:translateY(-16px);} to{opacity:1;transform:none;} }
-  @keyframes flashcard { 0%,100%{border-color:#3a2f22;} 50%{border-color:#e8c56a;} }
-  .mini-chip { transition: transform .08s ease, background .15s ease, border-color .15s ease; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
-  .mini-chip:active { transform: scale(.85); }
-  .card-in { animation: risein .3s ease both; }
-  .match-row:hover { background: #2c251c !important; }
-  .flash { animation: flashcard 1s ease 2; }
-  .hm::-webkit-scrollbar { height: 6px; }
-  .hm::-webkit-scrollbar-thumb { background: #3a2f22; border-radius: 3px; }
-  @media (prefers-reduced-motion: reduce) { .card-in, .mini-chip, .flash { animation: none !important; transition: none !important; } }
-  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #e8c56a; outline-offset: 2px; }
-  input::placeholder { color: #6e6558; }
+:root {
+  /* --- pinnat: lämmin grafiitti --- */
+  --bg:         #0E0E10;
+  --surface:    #16161A;
+  --surface-2:  #1D1D22;
+  --surface-3:  #26262C;
+  --line:       #2A2A32;
+  --line-soft:  #202027;
+
+  /* --- teksti --- */
+  --text:       #EDEBE8;
+  --text-2:     #A5A29C;
+  --text-3:     #6E6B66;
+  --text-4:     #46443F;
+
+  /* --- kulta: vain valmiille --- */
+  --gold:       #F0C860;
+  --gold-mid:   #D4AC58;
+  --gold-dim:   #A8853A;
+  --gold-deep:  #6E5A25;
+  --gold-glow:  rgba(240, 200, 96, .16);
+
+  /* --- maalausvaiheet: sovelluksen väripaletti --- */
+  --s0: #64666D;  --s0-bg: #26262C;   /* to-do */
+  --s1: #7E9CB5;  --s1-bg: #2A3742;   /* kasattu */
+  --s2: #C6C4BE;  --s2-bg: #232329;   /* pohjamaalattu */
+  --s3: #E08C3C;  --s3-bg: #4A2D14;   /* maalaus aloitettu */
+  --s4: #F0C860;  --s4-bg: #4D3D18;   /* valmis */
+
+  /* --- semanttiset --- */
+  --ok:    #7FB07A;
+  --warn:  #E0A93C;
+  --err:   #D9736A;
+
+  /* --- rytmi --- */
+  --s1x: 4px;  --s2x: 8px;  --s3x: 12px;
+  --s4x: 16px; --s5x: 24px; --s6x: 32px; --s7x: 48px;
+
+  /* --- kaaret --- */
+  --r1: 6px; --r2: 10px; --r3: 14px; --r4: 18px; --rf: 999px;
+
+  /* --- syvyys: varjo reunuksen sijaan, vähemmän melua --- */
+  --sh1: 0 1px 2px rgba(0,0,0,.4);
+  --sh2: 0 4px 14px rgba(0,0,0,.45);
+  --sh3: 0 12px 32px rgba(0,0,0,.55);
+
+  /* --- typografia --- */
+  --display: "Oswald", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --ease: cubic-bezier(.4, 0, .2, 1);
+}
+
+/* =============================================================
+   PERUSTA
+   ============================================================= */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  /* hienovarainen lämpö ylälaidassa, kuten työpöytälampun kajo */
+  background-image: radial-gradient(120% 60% at 50% -10%, rgba(240,200,96,.045), transparent 70%);
+  background-attachment: fixed;
+}
+
+button, input, select, textarea { font-family: inherit; }
+
+/* numerot eivät saa hypätä kun ne päivittyvät */
+.num, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* =============================================================
+   TYPOGRAFIA
+   ============================================================= */
+
+.display {
+  font-family: var(--display);
+  font-weight: 500;
+  letter-spacing: .01em;
+}
+
+.eyebrow {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* =============================================================
+   PINNAT
+   ============================================================= */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r3);
+  box-shadow: var(--sh1);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r3);
+  transition: border-color .18s var(--ease), background .18s var(--ease);
+}
+
+.card:hover { border-color: var(--line); }
+
+.card.is-done {
+  border-color: var(--gold-deep);
+  background: linear-gradient(180deg, rgba(240,200,96,.045), transparent 40%), var(--surface);
+}
+
+/* =============================================================
+   KENTÄT
+   ============================================================= */
+
+.field {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  padding: 11px 12px;
+  color: var(--text);
+  font-size: 15px;
+  transition: border-color .16s var(--ease), background .16s var(--ease);
+}
+
+.field:hover { border-color: var(--surface-3); }
+.field:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+  background: var(--surface);
+}
+.field::placeholder { color: var(--text-4); }
+.field.is-dirty { border-color: var(--gold-dim); }
+
+/* piilota numerokenttien nuolet — määrä syötetään näppäimistöltä */
+.field[type="number"]::-webkit-outer-spin-button,
+.field[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.field[type="number"] { -moz-appearance: textfield; }
+
+/* =============================================================
+   NAPIT
+   ============================================================= */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--r2);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform .12s var(--ease), background .16s var(--ease),
+              border-color .16s var(--ease), opacity .16s var(--ease);
+}
+
+.btn:active { transform: translateY(1px); }
+.btn:disabled { cursor: default; opacity: .4; transform: none; }
+
+.btn-gold {
+  background: linear-gradient(180deg, #C9A24A, #9A7A2E);
+  border-color: var(--gold);
+  color: #1A1408;
+}
+.btn-gold:hover:not(:disabled) { background: linear-gradient(180deg, #D9B255, #A88736); }
+
+.btn-quiet {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--text-2);
+}
+.btn-quiet:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+
+.btn-crit {
+  background: linear-gradient(180deg, #A33B3B, #7E2626);
+  border-color: #C05050;
+  color: #FBEDED;
+}
+.btn-crit:hover:not(:disabled) { background: linear-gradient(180deg, #B34444, #8E2E2E); }
+
+.btn-ghost {
+  background: none;
+  border: none;
+  color: var(--gold-dim);
+  font-size: 13px;
+  padding: 6px 4px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color .16s var(--ease);
+}
+.btn-ghost:hover { color: var(--gold); }
+
+.btn-sm { padding: 6px 11px; font-size: 12.5px; }
+
+/* =============================================================
+   HAITARIT
+   ============================================================= */
+
+.acc-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2x);
+  background: none;
+  border: none;
+  padding: 10px 2px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  border-radius: var(--r1);
+  transition: background .16s var(--ease);
+}
+
+.acc-head:hover { background: rgba(255,255,255,.022); }
+
+.chev {
+  flex-shrink: 0;
+  width: 9px; height: 9px;
+  border-right: 1.75px solid currentColor;
+  border-bottom: 1.75px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform .22s var(--ease);
+  margin-right: 3px;
+  opacity: .7;
+}
+.chev.is-open { transform: rotate(45deg); }
+
+.acc-body { animation: unfold .24s var(--ease) both; }
+
+@keyframes unfold {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* =============================================================
+   MINIATYYRINAPIT — sovelluksen ydinvuorovaikutus
+   ============================================================= */
+
+.chip {
+  width: 34px; height: 34px;
+  border-radius: var(--rf);
+  border: 2px solid;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform .12s var(--ease), box-shadow .18s var(--ease),
+              background .2s var(--ease), border-color .2s var(--ease);
+}
+
+.chip:hover { transform: scale(1.09); }
+.chip:active { transform: scale(.88); }
+
+.chip-0 { background: var(--s0-bg); border-color: var(--s0); color: var(--s0); }
+.chip-1 { background: var(--s1-bg); border-color: var(--s1); color: var(--s1); }
+.chip-2 { background: var(--s2-bg); border-color: var(--s2); color: var(--s2); }
+.chip-3 { background: var(--s3-bg); border-color: var(--s3); color: var(--s3); }
+.chip-4 {
+  background: var(--s4-bg); border-color: var(--s4); color: var(--s4);
+  box-shadow: 0 0 10px var(--gold-glow);
+  font-size: 13px;
+}
+.chip-4:hover { box-shadow: 0 0 16px rgba(240,200,96,.3); }
+
+/* =============================================================
+   PUTKILINJA — signature-elementti
+   Näyttää miten minit virtaavat harmaasta kultaan.
+   ============================================================= */
+
+.pipeline {
+  display: flex;
+  width: 100%;
+  height: 34px;
+  border-radius: var(--r2);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+}
+
+.pipe-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 0;
+  transition: flex-grow .5s var(--ease), background .3s var(--ease);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.pipe-0 { background: linear-gradient(180deg, #34343C, #26262C); color: var(--s0); }
+.pipe-1 { background: linear-gradient(180deg, #354856, #2A3742); color: #B9CEDD; }
+.pipe-2 { background: linear-gradient(180deg, #33333A, #26262C); color: var(--s2); }
+.pipe-3 { background: linear-gradient(180deg, #6A4019, #4A2D14); color: #F5B573; }
+.pipe-4 { background: linear-gradient(180deg, #7A6224, #4D3D18); color: var(--s4); }
+
+/* ohut versio korteille */
+.pipeline.slim { height: 6px; border-radius: var(--rf); border: none; }
+.pipeline.slim .pipe-seg { font-size: 0; }
+
+/* =============================================================
+   TILASTOLAATAT
+   ============================================================= */
+
+.stat {
+  flex: 1 1 96px;
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r2);
+  padding: 11px 13px;
+  transition: border-color .18s var(--ease);
+}
+.stat.is-live { border-color: var(--gold-deep); }
+
+.stat-val {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+/* =============================================================
+   SAAVUTUKSET
+   ============================================================= */
+
+.ach {
+  border-radius: var(--r2);
+  padding: 11px 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  opacity: .6;
+  transition: opacity .2s var(--ease), transform .16s var(--ease),
+              border-color .2s var(--ease);
+}
+.ach:hover { transform: translateY(-2px); }
+.ach.is-unlocked { opacity: 1; }
+
+.ach-icon { font-size: 19px; flex-shrink: 0; filter: grayscale(1); opacity: .4; }
+.ach.is-unlocked .ach-icon { filter: none; opacity: 1; }
+
+/* =============================================================
+   LÄMPÖKARTTA
+   ============================================================= */
+
+.hm { overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.hm::-webkit-scrollbar { height: 5px; }
+.hm::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+.hm-cell { border-radius: 2.5px; transition: transform .12s var(--ease); }
+.hm-cell:hover { transform: scale(1.35); }
+
+/* =============================================================
+   ILMOITUKSET
+   ============================================================= */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  z-index: 60;
+  border-radius: var(--r3);
+  box-shadow: var(--sh3);
+  animation: drop .32s var(--ease) both;
+  max-width: min(92vw, 420px);
+}
+
+@keyframes drop {
+  from { opacity: 0; transform: translate(-50%, -14px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* =============================================================
+   LISTARIVIT
+   ============================================================= */
+
+.row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: background .16s var(--ease);
+}
+.row:hover { background: var(--surface-2); }
+.row:last-child { border-bottom: none; }
+
+.checkbox {
+  width: 19px; height: 19px;
+  border-radius: var(--r1);
+  border: 2px solid var(--line);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background .16s var(--ease), border-color .16s var(--ease);
+}
+.checkbox.is-on {
+  background: var(--gold-deep);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* =============================================================
+   LIIKE JA SAAVUTETTAVUUS
+   ============================================================= */
+
+.rise { animation: rise .3s var(--ease) both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes goldpulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,200,96,0); }
+  50%      { box-shadow: 0 0 18px 1px rgba(240,200,96,.3); }
+}
+.is-celebrating { animation: goldpulse 2.6s var(--ease) infinite; }
+
+@keyframes flashcard {
+  0%, 100% { border-color: var(--line-soft); }
+  50%      { border-color: var(--gold); }
+}
+.flash { animation: flashcard 1s var(--ease) 2; }
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .chip:hover, .ach:hover, .hm-cell:hover { transform: none; }
+}
+
+/* =============================================================
+   MOBIILI
+   ============================================================= */
+
+@media (max-width: 480px) {
+  .stat-val { font-size: 22px; }
+  .chip { width: 32px; height: 32px; }
+  .pipeline { height: 30px; }
+  .pipe-seg { font-size: 10px; }
+}

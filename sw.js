@@ -8,12 +8,14 @@
  * Kun muutat index.html:ää, nosta CACHE-versiota. Muuten selain voi tarjoilla
  * vanhaa runkoa vielä pitkään.
  */
-const CACHE = "maalausurakka-v3";
+const CACHE = "maalausurakka-v5";
 
 /* sovelluksen runko */
 const SHELL = [
   "./",
   "./index.html",
+  "./styles.css",
+  "./app.jsx",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",
@@ -94,6 +96,24 @@ self.addEventListener("fetch", (e) => {
           return res;
         })
         .catch(() => caches.match("./index.html").then(r => r || caches.match("./")))
+    );
+    return;
+  }
+
+  // oma sovelluskoodi (app.jsx, styles.css): verkko ensin.
+  // Nämä sisältävät sovelluslogiikan ja ulkoasun, joten vanhentunut versio on
+  // pahempi kuin hetken hitaampi lataus. Välimuisti vain jos verkkoa ei ole.
+  if (url.origin === self.location.origin && /\.(jsx|css)$/.test(url.pathname)) {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then(c => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }
