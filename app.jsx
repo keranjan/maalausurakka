@@ -215,7 +215,7 @@ function tally(items) {
 
 const KNOWN_EMAILS_KEY = "maalausurakka-profiilit";
 const LOG_CAP = 4000;
-const HEATMAP_WEEKS = 24;
+const HEATMAP_WEEKS = 13;   // ~3 kuukautta; mahtuu puhelimen leveyteen ilman vieritystä
 
 /* ---------- päivämääräapurit (paikallinen aika, viikko alkaa maanantaista) ---------- */
 const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -634,7 +634,7 @@ function Heatmap({ byDay }) {
         <div key={d} className="hm-cell"
           title={future ? "" : `${fiDate(date)} — ${n} ${n === 1 ? "askel" : "askelta"}`}
           style={{
-            width: 12, height: 12,
+            width: 15, height: 15,
             background: future ? "transparent" : shade(n),
             border: future ? "none" : `1px solid ${n ? "transparent" : "var(--surface-2)"}`,
             boxSizing: "border-box",
@@ -644,7 +644,7 @@ function Heatmap({ byDay }) {
     // kuukauden vaihtuminen -> otsikko sarakkeen päälle
     const label = weekStart.getDate() <= 7 ? MONTHS_FI[weekStart.getMonth()] : "";
     cols.push(
-      <div key={w} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div key={w} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ height: 11, fontSize: 9, color: "var(--text-3)", whiteSpace: "nowrap", lineHeight: "11px" }}>{label}</div>
         {cells}
       </div>
@@ -653,7 +653,7 @@ function Heatmap({ byDay }) {
 
   return (
     <div className="hm" style={{ overflowX: "auto", paddingBottom: 4 }}>
-      <div style={{ display: "flex", gap: 3, minWidth: "min-content" }}>{cols}</div>
+      <div style={{ display: "flex", gap: 4, minWidth: "min-content" }}>{cols}</div>
     </div>
   );
 }
@@ -1411,7 +1411,7 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- ASETUKSET ---------- */}
         {settingsOpen && (
-          <section className="rise" className="panel" style={{ border: "1px solid var(--line)", padding: 14, marginBottom: 16 }}>
+          <section className="rise panel" style={{ borderColor: "var(--line)", marginBottom: 16 }}>
             <h2 style={{ fontFamily: "var(--display)", fontSize: 15, margin: "0 0 10px", color: "var(--gold-mid)" }}>Profiilin asetukset</h2>
             <label style={{ fontSize: 13, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Profiilin nimi</label>
             <input value={draftName} onChange={e => setDraftName(e.target.value)} className="field" style={{ marginBottom: 12 }} />
@@ -1465,7 +1465,7 @@ function Tracker({ session, online, onSignOut }) {
         {suggestion && (
           <section className="rise" style={{
             background: "linear-gradient(135deg,var(--surface-3),var(--surface-2))", border: "1px solid var(--gold-deep)",
-            borderRadius: "var(--r3)", padding: 16, marginBottom: 16,
+            borderRadius: "var(--r3)", padding: "var(--s4x)", marginBottom: 16,
           }}>
             <div style={{ fontSize: 11, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 8 }}>
               Seuraava siirto
@@ -1597,7 +1597,7 @@ function Tracker({ session, online, onSignOut }) {
           </button>
 
           {manualOpen && (
-            <div className="rise" className="panel" style={{ borderRadius: "var(--r2)", padding: 12, marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="rise panel" style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
               <input value={manual.product} onChange={e => setManual({ ...manual, product: e.target.value })} placeholder="Tuotteen nimi" className="field" />
               <select value={manual.system} onChange={e => setManual({ ...manual, system: e.target.value })} className="field">
                 {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1654,7 +1654,7 @@ function Tracker({ session, online, onSignOut }) {
 
           {/* ---------- SISÄLTÖJEN ERÄHAKU KÄYNNISSÄ ---------- */}
           {batch && (
-            <div className="rise" className="panel" style={{ padding: 14, marginTop: 10 }}>
+            <div className="rise panel" style={{ marginTop: 10 }}>
               <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 8 }}>
                 ⏳ Haetaan sisältöjä… {batch.done + 1} / {batch.total}
               </div>
@@ -1670,7 +1670,7 @@ function Tracker({ session, online, onSignOut }) {
 
           {/* ---------- HAKUTULOKSET: MONIVALINTA ---------- */}
           {matches && !batch && (
-            <div className="rise" className="panel" style={{ padding: 0, marginTop: 10, overflow: "hidden" }}>
+            <div className="rise panel flush" style={{ marginTop: 10, overflow: "hidden" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--line-soft)" }}>
                 <span style={{ fontSize: 13, color: "var(--text-2)" }}>{matches.length} tuotetta — valitse lisättävät:</span>
                 <button onClick={() => setSelected(allSelected ? [] : matches.map(m => m.id))} className="btn-ghost" style={{ fontSize: 12 }}>
@@ -1704,7 +1704,7 @@ function Tracker({ session, online, onSignOut }) {
 
           {/* ---------- VAHVISTUSJONO: YKSI TUOTE KERRALLAAN ---------- */}
           {current && (
-            <div className="rise" style={{ background: "var(--surface-2)", border: "1px solid var(--gold-deep)", borderRadius: "var(--r3)", padding: 14, marginTop: 10 }}>
+            <div className="rise" style={{ background: "var(--surface-2)", border: "1px solid var(--gold-deep)", borderRadius: "var(--r3)", padding: "var(--s4x)", marginTop: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
                 <span style={{ fontSize: 11, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
                   Tarkista määrät
@@ -1802,7 +1802,7 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- TYHJÄ TILA ---------- */}
         {loaded && products.length === 0 && (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-3)" }}>
+          <div style={{ textAlign: "center", padding: "var(--s7x) var(--s5x)", color: "var(--text-3)" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🎨</div>
             <p style={{ margin: 0, fontSize: 15 }}>Urakka on tyhjä. Hae ensimmäinen tuote yltä —<br />esim. "High Elf" tai "Combat Patrol Tyranids".</p>
           </div>
@@ -1886,7 +1886,7 @@ function Tracker({ session, online, onSignOut }) {
                           const facList = [...(factionsBySystem.get(SYSTEMS.includes(p.system) ? p.system : "Muu") || [])];
                           return (
                             <article key={p.id} id={"prod-" + p.id} className={"card rise" + (pDoneAll ? " is-done" : "") + (flash === p.id ? " flash" : "") + (pDoneAll && flash !== p.id ? " is-celebrating" : "")}
-                              style={{ padding: 12, marginBottom: 10 }}>
+                              style={{ marginBottom: 10 }}>
                               {/* --- taso 3: tuote --- */}
                               <button onClick={() => toggleProd(p.id)} aria-expanded={open} style={{
                                 display: "block", width: "100%", background: "none", border: "none",
@@ -2089,7 +2089,7 @@ function Tracker({ session, online, onSignOut }) {
           <section className="panel" style={{ marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                Viimeiset {HEATMAP_WEEKS} viikkoa
+                Viimeiset 3 kuukautta
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
                 vähän

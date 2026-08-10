@@ -114,17 +114,24 @@ button, input, select, textarea { font-family: inherit; }
    PINNAT
    ============================================================= */
 
+/* Yhtenäinen sisennys: kaikki laatikot hengittävät saman verran.
+   .flush poistaa sen listoilta, joissa rivit ulottuvat reunaan asti. */
 .panel {
   background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r3);
   box-shadow: var(--sh1);
+  padding: var(--s4x);
 }
+
+.panel.flush { padding: 0; }
+.panel.tight { padding: var(--s3x); }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r3);
+  padding: var(--s4x);
   transition: border-color .18s var(--ease), background .18s var(--ease);
 }
 
