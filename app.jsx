@@ -134,6 +134,9 @@ const ACHIEVEMENTS = [
   { id: "comeback", icon: "🔄", tier: "rare",   name: "Paluu",         desc: "Jatka urakkaa yli 30 päivän tauon jälkeen", target: 1, get: m => m.maxGap >= 30 ? 1 : 0 },
   { id: "days50",   icon: "🧭", tier: "epic",   name: "Uskollinen",    desc: "50 aktiivista päivää",                target: 50,  get: m => m.daysActive },
   { id: "days150",  icon: "🕰️", tier: "legend", name: "Elämäntapa",    desc: "150 aktiivista päivää",               target: 150, get: m => m.daysActive },
+  { id: "photo1",   icon: "📷", tier: "common", name: "Ensimmäinen muotokuva", desc: "Ota kuva valmiista yksiköstä", target: 1,  get: m => m.photos },
+  { id: "photo10",  icon: "🖼️", tier: "rare",   name: "Galleria aukeaa",       desc: "10 kuvaa galleriassa",           target: 10, get: m => m.photos },
+  { id: "photo25",  icon: "🏞️", tier: "epic",   name: "Kuraattori",            desc: "25 kuvaa galleriassa",           target: 25, get: m => m.photos },
   { id: "nogrey",   icon: "🧹", tier: "legend", name: "Ei enää harmaata", desc: "Yhtään minia ei ole enää to-dossa", target: 1,   get: m => (m.total > 0 && m.perStage[0] === 0) ? 1 : 0 },
   { id: "alldone",  icon: "🥇", tier: "legend", name: "Urakka valmis",    desc: "Kaikki miniatyyrit valmiina",       target: 1,   get: m => (m.total > 0 && m.finished === m.total) ? 1 : 0 },
 ];
@@ -148,6 +151,32 @@ const facKey = (f) => (f || "").trim().toLowerCase();
 /* Placeholderien turvamuunnin: NaN tai undefined ei saa koskaan päätyä
    käyttäjälle näkyvään ilmoitukseen. Palauttaa aina kelvollisen luvun. */
 const safeNum = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+
+/* =============================================================
+   MAALAUSKUVAT
+   Puhelinkuva on tyypillisesti 3–6 Mt. Se pienennetään selaimessa
+   ennen lähetystä: Supabasen ilmainen taso on 1 Gt, joten
+   pakkaamattomana muutama sata kuvaa täyttäisi sen.
+   ============================================================= */
+const PHOTO_BUCKET = "maalauskuvat";
+const PHOTO_MAX_DIM = 1600;
+const PHOTO_QUALITY = 0.82;
+
+async function resizeImage(file) {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, PHOTO_MAX_DIM / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale);
+  const h = Math.round(bmp.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bmp, 0, 0, w, h);
+  bmp.close?.();
+  return new Promise((res, rej) =>
+    canvas.toBlob(b => b ? res(b) : rej(new Error("Kuvan pakkaus epäonnistui")),
+      "image/jpeg", PHOTO_QUALITY));
+}
 
 /* VAPID-avaimen muunnos push-tilausta varten */
 function urlB64ToU8(base64) {
@@ -698,6 +727,12 @@ function Tracker({ session, online, onSignOut }) {
   const [openRecipes, setOpenRecipes] = useState([]); // avatut maaliohjeet (unit-id)
   const [editProds, setEditProds] = useState([]);    // tuotteet muokkaustilassa (ei tallenneta)
   const [notifyPerm, setNotifyPerm] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
+  const [photoUrls, setPhotoUrls] = useState({});    // polku -> allekirjoitettu url
+  const [uploading, setUploading] = useState(null);  // unit-id jonka kuvaa lähetetään
+  const [photoErr, setPhotoErr] = useState(null);
+  const [lightbox, setLightbox] = useState(null);    // { url, unit, product, at }
+  const [photoPrompt, setPhotoPrompt] = useState(null); // { pid, uid, unit, product }
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [retry, setRetry] = useState(0);
   const skipSave = useRef(true);
   const saveTimer = useRef(null);
@@ -955,6 +990,7 @@ function Tracker({ session, online, onSignOut }) {
       sysDone: [...sysAll.values()].filter(Boolean).length,
       facDone: [...facAll.values()].filter(Boolean).length,
       bigUnit, night, early, weekend, maxGap,
+      photos: products.reduce((n, p) => n + p.units.reduce((m, u) => m + ((u.photos || []).length), 0), 0),
       totalSteps: momentum.totalSteps,
       bestStreak: Math.max(momentum.best, momentum.streak),
       maxDay: momentum.byDay.size ? Math.max(...momentum.byDay.values()) : 0,
@@ -1040,6 +1076,21 @@ function Tracker({ session, online, onSignOut }) {
   }, [products]);
 
   const suggestion = suggestions.length ? suggestions[suggIdx % suggestions.length] : null;
+
+  /* kaikki kuvat uusin ensin — galleriaa ja esilatausta varten */
+  const allPhotos = useMemo(() => {
+    const out = [];
+    products.forEach(p => p.units.forEach(u =>
+      (u.photos || []).forEach(ph => out.push({
+        ...ph, pid: p.id, uid: u.id, unit: u.name, product: p.name, faction: p.faction,
+      }))));
+    return out.sort((a, b) => b.t - a.t);
+  }, [products]);
+
+  useEffect(() => {
+    if (loaded && allPhotos.length) ensureUrls(allPhotos.map(x => x.p));
+    // eslint-disable-next-line
+  }, [loaded, allPhotos.length]);
 
   /* ---- paikallinen muistutus ----
      Ei taustapushia (staattinen hosting ei voi ajaa ajastimia). Sen sijaan:
@@ -1224,6 +1275,16 @@ function Tracker({ session, online, onSignOut }) {
     const np = nextProducts.find(x => x.id === pid);
     const isDone = np.units.every(x => x.minis.every(s => s === 4));
 
+    /* Yksikkö valmistui juuri -> ehdota kuvaa. Ehdotus tulee vain kun koko
+       yksikkö on maalattu, ei joka yksittäisestä ministä — muuten se olisi
+       kiusallinen. Kamera on silti aina saatavilla yksikkörivillä. */
+    const nu = np.units.find(x => x.id === unitId);
+    const unitWasDone = u.minis.length > 0 && u.minis.every(x => x === 4);
+    const unitNowDone = nu && nu.minis.length > 0 && nu.minis.every(x => x === 4);
+    if (unitNowDone && !unitWasDone) {
+      setPhotoPrompt({ pid, uid: unitId, unit: nu.name, product: np.name });
+    }
+
     // ryhmitä lokimerkinnät (from,to)-pareittain
     const t = Date.now();
     const groups = new Map();
@@ -1267,6 +1328,58 @@ function Tracker({ session, online, onSignOut }) {
   const setRecipe = (pid, unitId, recipe) => setProducts(prev => prev.map(p => p.id !== pid ? p : {
     ...p, units: p.units.map(u => u.id !== unitId ? u : { ...u, recipe }),
   }));
+
+  /* ---- maalauskuvat ---- */
+
+  /* Allekirjoitetut urlit vanhenevat, joten ne haetaan tarpeen mukaan ja
+     pidetään muistissa istunnon ajan. Bucket on yksityinen. */
+  const ensureUrls = async (paths) => {
+    const need = paths.filter(p => p && !photoUrls[p]);
+    if (!need.length) return;
+    try {
+      const { data, error } = await supa.storage.from(PHOTO_BUCKET).createSignedUrls(need, 3600);
+      if (error) throw error;
+      const add = {};
+      (data || []).forEach(d => { if (d.signedUrl && !d.error) add[d.path] = d.signedUrl; });
+      if (Object.keys(add).length) setPhotoUrls(prev => ({ ...prev, ...add }));
+    } catch (e) { console.warn("Kuvien osoitteiden haku epäonnistui", e); }
+  };
+
+  const addPhoto = async (pid, unitId, file) => {
+    if (!file || uploading) return;
+    setUploading(unitId); setPhotoErr(null);
+    try {
+      if (!file.type.startsWith("image/")) throw new Error("EI_KUVA");
+      const blob = await resizeImage(file);
+      const path = `${userId}/${unitId}/${Date.now()}.jpg`;
+      const { error } = await supa.storage.from(PHOTO_BUCKET)
+        .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+      if (error) throw error;
+      setProducts(prev => prev.map(p => p.id !== pid ? p : {
+        ...p, units: p.units.map(u => u.id !== unitId ? u
+          : { ...u, photos: [...(u.photos || []), { p: path, t: Date.now() }] }),
+      }));
+      ensureUrls([path]);
+      setPhotoPrompt(null);
+    } catch (e) {
+      setPhotoErr(e.message === "EI_KUVA"
+        ? "Valitse kuvatiedosto."
+        : "Kuvan tallennus epäonnistui. Tarkista yhteys ja yritä uudelleen.");
+      setTimeout(() => setPhotoErr(null), 5000);
+    }
+    setUploading(null);
+  };
+
+  const removePhoto = async (pid, unitId, path) => {
+    if (!window.confirm("Poistetaanko kuva?")) return;
+    setProducts(prev => prev.map(p => p.id !== pid ? p : {
+      ...p, units: p.units.map(u => u.id !== unitId ? u
+        : { ...u, photos: (u.photos || []).filter(x => x.p !== path) }),
+    }));
+    setLightbox(null);
+    try { await supa.storage.from(PHOTO_BUCKET).remove([path]); }
+    catch (e) { console.warn("Kuvan poisto tallennustilasta epäonnistui", e); }
+  };
 
   /* ---- yksikön muokkaus ---- */
   const renameUnit = (pid, unitId, name) => setProducts(prev => prev.map(p => p.id !== pid ? p : {
@@ -1368,6 +1481,74 @@ function Tracker({ session, online, onSignOut }) {
               {popup.length > 1 && <span style={{ color: "var(--text-3)", fontWeight: 400 }}> +{popup.length - 1} muuta</span>}
             </span>
           </span>
+        </div>
+      )}
+
+      {/* --- kehotus kuvata valmistunut yksikkö --- */}
+      {photoPrompt && (
+        <div className="toast" style={{
+          bottom: 16, top: "auto",
+          background: "var(--surface)", border: "1px solid var(--gold-deep)",
+          padding: "var(--s3x) var(--s4x)",
+        }}>
+          <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 3, fontWeight: 600 }}>
+            {photoPrompt.unit} on valmis
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 10 }}>
+            Ota kuva talteen — näet sen myöhemmin galleriassa.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <label className="btn btn-gold btn-sm" style={{ cursor: "pointer" }}>
+              📷 Ota kuva
+              <input type="file" accept="image/*" capture="environment"
+                onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addPhoto(photoPrompt.pid, photoPrompt.uid, f); }}
+                style={{ display: "none" }} />
+            </label>
+            <button className="btn btn-quiet btn-sm" onClick={() => setPhotoPrompt(null)}>Ei nyt</button>
+          </div>
+        </div>
+      )}
+
+      {photoErr && (
+        <div className="toast" style={{
+          bottom: 16, top: "auto", background: "#3A1A1A", border: "1px solid #C05050",
+          padding: "10px 16px", color: "#FBEDED", fontSize: 13,
+        }}>{photoErr}</div>
+      )}
+
+      {/* --- kuvan suurennos --- */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 70, background: "rgba(6,6,8,.94)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            padding: "var(--s4x)", cursor: "zoom-out",
+          }}>
+          {photoUrls[lightbox.path] && (
+            <img src={photoUrls[lightbox.path]} alt={`${lightbox.unit} maalattuna`}
+              onClick={e => e.stopPropagation()}
+              style={{
+                maxWidth: "100%", maxHeight: "72vh", objectFit: "contain",
+                borderRadius: "var(--r3)", cursor: "default",
+                boxShadow: "0 20px 60px rgba(0,0,0,.7)",
+              }} />
+          )}
+          <div onClick={e => e.stopPropagation()}
+            style={{ textAlign: "center", marginTop: "var(--s4x)", cursor: "default" }}>
+            <div className="display" style={{ fontSize: 18, color: "var(--gold)" }}>{lightbox.unit}</div>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>
+              {lightbox.product} · maalattu {fiDate(new Date(lightbox.at))}{new Date(lightbox.at).getFullYear()}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: "var(--s4x)" }}>
+              <button className="btn btn-quiet btn-sm" onClick={() => setLightbox(null)}>Sulje</button>
+              <button className="btn btn-quiet btn-sm"
+                style={{ color: "var(--err)" }}
+                onClick={() => removePhoto(lightbox.pid, lightbox.uid, lightbox.path)}>
+                Poista kuva
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1951,6 +2132,40 @@ function Tracker({ session, online, onSignOut }) {
                                           })}
                                         </div>
 
+                                        {/* --- maalauskuvat --- */}
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                                          {(u.photos || []).map(ph => (
+                                            <button key={ph.p}
+                                              onClick={() => setLightbox({ path: ph.p, unit: u.name, product: p.name, at: ph.t, pid: p.id, uid: u.id })}
+                                              title={`Maalattu ${fiDate(new Date(ph.t))}`}
+                                              style={{
+                                                width: 46, height: 46, padding: 0, cursor: "pointer",
+                                                borderRadius: "var(--r1)", overflow: "hidden",
+                                                border: "1px solid var(--gold-deep)", background: "var(--surface-2)",
+                                              }}>
+                                              {photoUrls[ph.p]
+                                                ? <img src={photoUrls[ph.p]} alt={`${u.name} maalattuna`}
+                                                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                                                : <span style={{ fontSize: 14, opacity: .5 }}>🖼️</span>}
+                                            </button>
+                                          ))}
+                                          <label
+                                            title="Lisää kuva tästä yksiköstä"
+                                            style={{
+                                              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                              minWidth: 46, height: 46, padding: "0 10px",
+                                              borderRadius: "var(--r1)", cursor: uploading === u.id ? "wait" : "pointer",
+                                              border: "1px dashed var(--line)", color: "var(--text-3)", fontSize: 12,
+                                            }}>
+                                            {uploading === u.id ? "…" : "📷"}
+                                            {!(u.photos || []).length && uploading !== u.id && <span>Lisää kuva</span>}
+                                            <input type="file" accept="image/*" capture="environment"
+                                              disabled={uploading === u.id}
+                                              onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addPhoto(p.id, u.id, f); }}
+                                              style={{ display: "none" }} />
+                                          </label>
+                                        </div>
+
                                         {/* --- maaliohje --- */}
                                         <button
                                           onClick={() => setOpenRecipes(prev => prev.includes(u.id) ? prev.filter(x => x !== u.id) : [...prev, u.id])}
@@ -2021,6 +2236,56 @@ function Tracker({ session, online, onSignOut }) {
             </section>
           );
         })}
+
+        {/* ---------- GALLERIA ---------- */}
+        {allPhotos.length > 0 && (
+          <section style={{ marginBottom: 24 }}>
+            <button onClick={() => setGalleryOpen(v => !v)} aria-expanded={galleryOpen}
+              className="acc-head"
+              style={{ borderBottom: "1px solid var(--line)", marginBottom: galleryOpen ? 10 : 0 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Chevron open={galleryOpen} />
+                <span className="display" style={{ fontSize: 16, color: "var(--gold-mid)", letterSpacing: ".06em", textTransform: "uppercase" }}>
+                  Galleria
+                </span>
+              </span>
+              <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+                {allPhotos.length} {allPhotos.length === 1 ? "kuva" : "kuvaa"}
+              </span>
+            </button>
+
+            {galleryOpen && (
+              <div className="acc-body" style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))",
+                gap: 8,
+              }}>
+                {allPhotos.map(ph => (
+                  <button key={ph.p}
+                    onClick={() => setLightbox({ path: ph.p, unit: ph.unit, product: ph.product, at: ph.t, pid: ph.pid, uid: ph.uid })}
+                    title={`${ph.unit} — ${ph.product}`}
+                    style={{
+                      position: "relative", aspectRatio: "1 / 1", padding: 0, cursor: "pointer",
+                      borderRadius: "var(--r2)", overflow: "hidden",
+                      border: "1px solid var(--line-soft)", background: "var(--surface-2)",
+                    }}>
+                    {photoUrls[ph.p]
+                      ? <img src={photoUrls[ph.p]} alt={`${ph.unit} maalattuna`} loading="lazy"
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : <span style={{ fontSize: 18, opacity: .4 }}>🖼️</span>}
+                    <span style={{
+                      position: "absolute", left: 0, right: 0, bottom: 0,
+                      background: "linear-gradient(transparent, rgba(6,6,8,.88))",
+                      color: "var(--text)", fontSize: 10.5, textAlign: "left",
+                      padding: "14px 6px 5px", lineHeight: 1.25,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>{ph.unit}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ---------- SAAVUTUKSET ---------- */}
         {stats.total > 0 && (
