@@ -8,7 +8,7 @@
  * Kun muutat index.html:ää, nosta CACHE-versiota. Muuten selain voi tarjoilla
  * vanhaa runkoa vielä pitkään.
  */
-const CACHE = "maalausurakka-v8";
+const CACHE = "maalausurakka-v9";
 
 /* sovelluksen runko */
 const SHELL = [

@@ -34,11 +34,11 @@ const MAX_SEARCHES = 2;
 const VAPID_PUBLIC_KEY = "BGj0o9zfUS6MirJfp4y-lOwM-IAekSK4y2SfebJ6XoHX-oHZLHmZ30LKa17PovTdqUDICZqzUE5P9v_AyILROko";
 
 const STAGES = [
-  { key: 0, name: "To-do",             short: "TD", color: "var(--s0)", bg: "var(--s0-bg)", desc: "Harmaata muovia",   verb: "kasausta",             min: 6 },
-  { key: 1, name: "Kasattu",           short: "KA", color: "var(--s1)", bg: "var(--s1-bg)", desc: "Kasattu, ei maalia", verb: "pohjamaalia",          min: 2 },
-  { key: 2, name: "Pohjamaalattu",     short: "PM", color: "var(--s2)", bg: "var(--s2-bg)", desc: "Primeri päällä",     verb: "maalauksen aloitusta", min: 10 },
-  { key: 3, name: "Maalaus aloitettu", short: "MA", color: "var(--s3)", bg: "var(--s3-bg)", desc: "Työn alla",          verb: "viimeistelyä",         min: 15 },
-  { key: 4, name: "Valmis",            short: "OK", color: "var(--gold)", bg: "var(--gold-deep)", desc: "Maalattu ja valmis!", verb: null,                  min: 0 },
+  { key: 0, name: "To-do",             short: "TD", color: "var(--s0)", bg: "var(--s0-bg)", desc: "Harmaata muovia",   verb: "kasausta",             w: 6 },
+  { key: 1, name: "Kasattu",           short: "KA", color: "var(--s1)", bg: "var(--s1-bg)", desc: "Kasattu, ei maalia", verb: "pohjamaalia",          w: 2 },
+  { key: 2, name: "Pohjamaalattu",     short: "PM", color: "var(--s2)", bg: "var(--s2-bg)", desc: "Primeri päällä",     verb: "maalauksen aloitusta", w: 10 },
+  { key: 3, name: "Maalaus aloitettu", short: "MA", color: "var(--s3)", bg: "var(--s3-bg)", desc: "Työn alla",          verb: "viimeistelyä",         w: 15 },
+  { key: 4, name: "Valmis",            short: "OK", color: "var(--gold)", bg: "var(--gold-deep)", desc: "Maalattu ja valmis!", verb: null,                  w: 0 },
 ];
 
 const SYSTEMS = [
@@ -196,7 +196,7 @@ const NOTIFY = {
     { who: "Sanguinius", b: "Älä anna epätoivon voittaa, {name}. Jokainen mini on kaunis loppuun saatettuna. Aloita yhdestä." },
     { who: "Roboute Guilliman", b: "Olen laatinut sinulle suunnitelman: {next}. Tehokkuus alkaa yhdestä vedosta. Ryhdytään töihin." },
     { who: "Saint Celestine", b: "Valo palaa yhä sinussa, {name}. Anna sen loistaa {grey} odottavalle sielulle. Tartu siveltimeen." },
-    { who: "Belisarius Cawl", b: "Laskelmieni mukaan {next} valmistuisi kymmenessä minuutissa. Kiehtovaa! Kokeillaanko?" },
+    { who: "Belisarius Cawl", b: "Olen analysoinut kokoelmasi. Optimaalinen seuraava askel: {next}. Kiehtovaa!" },
     { who: "Ciaphas Cain", b: "Jos minä selvisin hengissä, sinä selviät yhdestä pohjamaalauksesta. {next} odottaa, usko pois." },
     { who: "Leman Russ", b: "Ei kannata märehtiä, poikaseni. {grey} miniä. Yksi sivellin. Hoida homma." },
     { who: "Tech-Priest Enginseer", b: "01001101 — Omnissiah suosii ahkeria käsiä. Voitele siveltimesi, {name}. {next} kaipaa huomiota." },
@@ -1075,12 +1075,15 @@ function Tracker({ session, online, onSignOut }) {
       u.minis.forEach(s => { if (s < 4) counts[s]++; });
       counts.forEach((n, stage) => {
         if (!n) return;
-        const est = Math.max(5, Math.round((n * STAGES[stage].min) / 5) * 5);
-        cands.push({ pid: p.id, uid2: u.id, product: p.name, unit: u.name, recipe: u.recipe || "", stage, n, est });
+        /* Suhteellinen työmäärä pelkkää järjestämistä varten — ei näytetä
+           käyttäjälle. Aika-arvio muuttaisi harrastuksen suoritteeksi ja
+           loisi aikataulupainetta, joka ei kuulu tähän. */
+        const weight = n * STAGES[stage].w;
+        cands.push({ pid: p.id, uid2: u.id, product: p.name, unit: u.name, recipe: u.recipe || "", stage, n, weight });
       });
     }));
     // kesken olevat ennen koskemattomia, sitten nopein ensin
-    cands.sort((a, b) => (a.stage === 0) - (b.stage === 0) || a.est - b.est);
+    cands.sort((a, b) => (a.stage === 0) - (b.stage === 0) || a.weight - b.weight);
     return cands;
   }, [products]);
 
@@ -1589,14 +1592,17 @@ function Tracker({ session, online, onSignOut }) {
 
         {/* ---------- OTSAKE ---------- */}
         <header style={{ textAlign: "center", marginBottom: 6 }}>
-          <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Maalausurakka</div>
           <h1 className="display" style={{
-            fontSize: "clamp(24px, 7vw, 34px)", fontWeight: 600, color: "var(--text)",
-            margin: "4px 0 0", lineHeight: 1.1, letterSpacing: "-.01em",
+            fontSize: "clamp(26px, 8vw, 36px)", fontWeight: 600, color: "var(--text)",
+            margin: 0, lineHeight: 1.05, letterSpacing: ".02em", textTransform: "uppercase",
           }}>
-            Harmaasta legioonasta<br />
-            <span style={{ color: "var(--gold)" }}>kultaiseen armeijaan</span>
+            Maalaus<span style={{ color: "var(--gold)" }}>urakka</span>
           </h1>
+          {stats.total > 0 && (
+            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 5 }}>
+              {stats.total} miniä · {grouped.length} {grouped.length === 1 ? "pelijärjestelmä" : "pelijärjestelmää"}
+            </div>
+          )}
         </header>
         <div style={{ textAlign: "center", fontSize: 12, color: syncLabel.color, marginBottom: 14 }}>{syncLabel.txt}</div>
 
@@ -1665,7 +1671,7 @@ function Tracker({ session, online, onSignOut }) {
               {suggestion.n} × {suggestion.unit}
             </div>
             <div style={{ fontSize: 14, color: "var(--text-2)", marginTop: 3 }}>
-              odottaa {STAGES[suggestion.stage].verb} · noin {suggestion.est} min
+              odottaa {STAGES[suggestion.stage].verb}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{suggestion.product}</div>
             {suggestion.recipe && (
