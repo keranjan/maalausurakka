@@ -343,6 +343,92 @@ button, input, select, textarea { font-family: inherit; }
 .pipeline.slim .pipe-seg { font-size: 0; }
 
 /* =============================================================
+   LISÄYSPANEELI JA VÄLILEHDET
+   Tuotteen lisääminen on eri tekemistä kuin edistymisen seuranta,
+   joten se saa oman selkeän paneelinsa kahdella tasavertaisella
+   tavalla: haku ja käsinsyöttö.
+   ============================================================= */
+
+.add-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 14px;
+  border-radius: var(--r3);
+  border: 1px dashed var(--gold-deep);
+  background: linear-gradient(180deg, rgba(240,200,96,.055), rgba(240,200,96,.02));
+  color: var(--gold);
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .18s var(--ease), border-color .18s var(--ease), transform .12s var(--ease);
+}
+.add-trigger:hover {
+  background: linear-gradient(180deg, rgba(240,200,96,.1), rgba(240,200,96,.04));
+  border-color: var(--gold-dim);
+}
+.add-trigger:active { transform: translateY(1px); }
+.add-trigger .plus { font-size: 19px; line-height: 1; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r2);
+  margin-bottom: var(--s4x);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border: none;
+  background: none;
+  border-radius: var(--r1);
+  color: var(--text-3);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .16s var(--ease), color .16s var(--ease);
+}
+.tab:hover { color: var(--text-2); background: var(--surface-2); }
+.tab.is-active {
+  background: var(--surface-3);
+  color: var(--gold);
+  box-shadow: var(--sh1);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
+/* pikaehdotukset hakukentän alle */
+.pill {
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rf);
+  padding: 5px 11px;
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .16s var(--ease), color .16s var(--ease);
+}
+.pill:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+/* =============================================================
    TILASTOLAATAT
    ============================================================= */
 

@@ -709,7 +709,8 @@ function Tracker({ session, online, onSignOut }) {
   const [failed, setFailed] = useState([]);       // tuotteet joiden sisältö ei selvinnyt
   const [brush, setBrush] = useState(null);
   const [celebrate, setCelebrate] = useState(null);
-  const [manualOpen, setManualOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);   // lisäyspaneeli auki
+  const [addTab, setAddTab] = useState("search");  // "search" | "manual"
   const [manual, setManual] = useState({ product: "", faction: "", system: SYSTEMS[0], units: [{ id: uid(), name: "", count: 5 }] });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draftKey, setDraftKey] = useState("");
@@ -791,6 +792,14 @@ function Tracker({ session, online, onSignOut }) {
   const toggleCat = (sys) => setOpenCats(prev => prev.includes(sys) ? prev.filter(x => x !== sys) : [...prev, sys]);
   const toggleFac = (id) => setOpenFacs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleProd = (pid) => setOpenProds(prev => prev.includes(pid) ? prev.filter(x => x !== pid) : [...prev, pid]);
+
+  /* Tyhjällä kokoelmalla lisäyspaneeli on auki valmiiksi: ensimmäisellä
+     käyttökerralla ei ole mitään seurattavaa, joten lisääminen on ainoa
+     mielekäs seuraava askel. */
+  useEffect(() => {
+    if (loaded && products.length === 0) setAddOpen(true);
+    // eslint-disable-next-line
+  }, [loaded]);
 
   /* ---- tallennus (debounce) ----
      retry-laskuri ajaa efektin uudelleen kun yhteys palaa, jolloin
@@ -1208,7 +1217,7 @@ function Tracker({ session, online, onSignOut }) {
   /* ---- vahvistusjono ---- */
   const current = queue[queueIdx] || null;
   const advance = () => {
-    if (queueIdx + 1 >= queue.length) { setQueue([]); setQueueIdx(0); }
+    if (queueIdx + 1 >= queue.length) { setQueue([]); setQueueIdx(0); setAddOpen(false); }
     else setQueueIdx(i => i + 1);
   };
   const patchQueueUnit = (rowId, patch) => setQueue(q => q.map((it, i) =>
@@ -1252,7 +1261,8 @@ function Tracker({ session, online, onSignOut }) {
       units: manualRows.map(u => ({ id: uid(), name: u.name, minis: Array(u.count).fill(0) })),
     }, ...prev]);
     setManual({ product: "", faction: manual.faction, system: manual.system, units: [blankRow()] });
-    setManualOpen(false); setSuggIdx(0);
+    setAddOpen(false);
+    setSuggIdx(0);
   };
 
   /* ---- ydin: vaiheen muutos + lokitus ---- */
@@ -1760,68 +1770,108 @@ function Tracker({ session, online, onSignOut }) {
           )}
         </section>
 
-        {/* ---------- HAKU ---------- */}
+        {/* ---------- LISÄÄ URAKKAAN ---------- */}
         <section style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
-              placeholder="Hae tuotteita, esim. 'High Elf' tai 'Combat Patrol'…"
-              className="field" style={{ flex: 1, background: "var(--surface)", borderRadius: "var(--r2)", padding: "12px 14px" }} />
-            <button onClick={doSearch} disabled={searching} style={{
-              background: searching ? "var(--line)" : "linear-gradient(135deg,#A33B3B,#7E2626)",
-              color: "#FBEDED", border: "1px solid #C05050", borderRadius: "var(--r2)",
-              padding: "0 18px", fontWeight: 700, fontSize: 15, cursor: searching ? "wait" : "pointer", flexShrink: 0,
-            }}>{searching ? "Haetaan…" : "Hae"}</button>
-          </div>
+          {!addOpen && (
+            <button className="add-trigger" onClick={() => setAddOpen(true)} aria-expanded={false}>
+              <span className="plus">+</span> Lisää urakkaan
+            </button>
+          )}
 
-          <button onClick={() => setManualOpen(v => !v)} className="btn-ghost" style={{ marginTop: 6 }}>
-            {manualOpen ? "Sulje käsinlisäys" : "Tai lisää tuote käsin"}
-          </button>
-
-          {manualOpen && (
-            <div className="rise panel" style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
-              <input value={manual.product} onChange={e => setManual({ ...manual, product: e.target.value })} placeholder="Tuotteen nimi" className="field" />
-              <select value={manual.system} onChange={e => setManual({ ...manual, system: e.target.value })} className="field">
-                {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <input value={manual.faction} onChange={e => setManual({ ...manual, faction: e.target.value })}
-                list="fac-manual" placeholder="Rotu / armeija, esim. High Elves (valinnainen)" className="field" />
-              <datalist id="fac-manual">
-                {[...(factionsBySystem.get(manual.system) || [])].map(f => <option key={f} value={f} />)}
-              </datalist>
-
-              <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>
-                Miniatyyrit
+          {addOpen && (
+            <div className="rise panel" style={{ borderColor: "var(--gold-deep)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
+                <span className="eyebrow" style={{ color: "var(--gold-dim)" }}>Lisää urakkaan</span>
+                <button onClick={() => { setAddOpen(false); setMatches(null); setSearchError(null); }}
+                  aria-label="Sulje" title="Sulje"
+                  style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 2 }}>
+                  ×
+                </button>
               </div>
 
-              {manual.units.map((u, i) => (
-                <div key={u.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input value={u.name} onChange={e => setManualRow(u.id, { name: e.target.value })}
-                    onKeyDown={e => { if (e.key === "Enter" && i === manual.units.length - 1) addManualRow(); }}
-                    placeholder={i === 0 ? "Miniatyyrin nimi, esim. Clanrats" : "Miniatyyrin nimi"} className="field" style={{ flex: 1 }} />
-                  <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
-                    onChange={e => setManualRow(u.id, { count: e.target.value })}
-                    className="field" style={{ width: 68, flexShrink: 0 }} />
-                  <button onClick={() => removeManualRow(u.id)} disabled={manual.units.length === 1}
-                    aria-label="Poista rivi" title="Poista rivi" style={{
-                      background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
-                      color: manual.units.length === 1 ? "var(--line-soft)" : "var(--text-3)",
-                      fontSize: 18, lineHeight: 1, cursor: manual.units.length === 1 ? "default" : "pointer",
-                    }}>×</button>
+              {/* kaksi tasavertaista tapaa */}
+              <div className="tabs" role="tablist">
+                <button role="tab" aria-selected={addTab === "search"}
+                  className={"tab" + (addTab === "search" ? " is-active" : "")}
+                  onClick={() => setAddTab("search")}>
+                  🔍 Hae tuote
+                </button>
+                <button role="tab" aria-selected={addTab === "manual"}
+                  className={"tab" + (addTab === "manual" ? " is-active" : "")}
+                  onClick={() => setAddTab("manual")}>
+                  ✍️ Syötä käsin
+                </button>
+              </div>
+
+              {/* --- HAKU --- */}
+              {addTab === "search" && (
+                <div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
+                      placeholder="Tuotteen tai armeijan nimi…" autoFocus
+                      className="field" style={{ flex: 1 }} />
+                    <button onClick={doSearch} disabled={searching || !query.trim()}
+                      className="btn btn-gold" style={{ flexShrink: 0 }}>
+                      {searching ? "Haetaan…" : "Hae"}
+                    </button>
+                  </div>
+                  <p className="hint">
+                    Osittainen nimi riittää. Sovellus etsii täsmäävät Games Workshop -tuotteet
+                    ja hakee valitsemiesi laatikoiden sisällöt.
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    {["High Elf", "Combat Patrol", "Skaven", "Space Marines", "Kill Team"].map(ex => (
+                      <button key={ex} className="pill" onClick={() => setQuery(ex)}>{ex}</button>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              )}
 
-              <button onClick={addManualRow} className="btn-ghost" style={{ alignSelf: "flex-start", textDecoration: "none", border: "1px dashed var(--line)", borderRadius: "var(--r2)", padding: "7px 12px", fontSize: 13 }}>
-                + Lisää miniatyyri
-              </button>
+              {/* --- KÄSIN --- */}
+              {addTab === "manual" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <input value={manual.product} onChange={e => setManual({ ...manual, product: e.target.value })}
+                    placeholder="Tuotteen nimi" autoFocus className="field" />
+                  <select value={manual.system} onChange={e => setManual({ ...manual, system: e.target.value })} className="field">
+                    {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <input value={manual.faction} onChange={e => setManual({ ...manual, faction: e.target.value })}
+                    list="fac-manual" placeholder="Rotu / armeija, esim. High Elves (valinnainen)" className="field" />
+                  <datalist id="fac-manual">
+                    {[...(factionsBySystem.get(manual.system) || [])].map(f => <option key={f} value={f} />)}
+                  </datalist>
 
-              <button onClick={addManual} disabled={!manualValid} style={{
-                background: manualValid ? "var(--line-soft)" : "var(--surface-2)",
-                border: `1px solid ${manualValid ? "var(--surface-3)" : "var(--line-soft)"}`, borderRadius: "var(--r2)", padding: "10px",
-                color: manualValid ? "var(--gold)" : "var(--text-4)", fontWeight: 700,
-                cursor: manualValid ? "pointer" : "default", marginTop: 2,
-              }}>
-                {manualValid ? `Lisää urakkaan (${manualTotal} miniä)` : "Lisää urakkaan"}
-              </button>
+                  <div className="eyebrow" style={{ marginTop: 4 }}>Miniatyyrit</div>
+
+                  {manual.units.map((u, i) => (
+                    <div key={u.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input value={u.name} onChange={e => setManualRow(u.id, { name: e.target.value })}
+                        onKeyDown={e => { if (e.key === "Enter" && i === manual.units.length - 1) addManualRow(); }}
+                        placeholder={i === 0 ? "Miniatyyrin nimi, esim. Clanrats" : "Miniatyyrin nimi"}
+                        className="field" style={{ flex: 1 }} />
+                      <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
+                        onChange={e => setManualRow(u.id, { count: e.target.value })}
+                        className="field" style={{ width: 68, flexShrink: 0 }} />
+                      <button onClick={() => removeManualRow(u.id)} disabled={manual.units.length === 1}
+                        aria-label="Poista rivi" title="Poista rivi" style={{
+                          background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
+                          color: manual.units.length === 1 ? "var(--line-soft)" : "var(--text-3)",
+                          fontSize: 18, lineHeight: 1, cursor: manual.units.length === 1 ? "default" : "pointer",
+                        }}>×</button>
+                    </div>
+                  ))}
+
+                  <button onClick={addManualRow} className="btn-ghost"
+                    style={{ alignSelf: "flex-start", textDecoration: "none", border: "1px dashed var(--line)", borderRadius: "var(--r2)", padding: "7px 12px", fontSize: 13 }}>
+                    + Lisää miniatyyri
+                  </button>
+
+                  <button onClick={addManual} disabled={!manualValid}
+                    className={manualValid ? "btn btn-gold" : "btn btn-quiet"} style={{ marginTop: 4 }}>
+                    {manualValid ? `Lisää urakkaan (${manualTotal} miniä)` : "Lisää urakkaan"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1985,7 +2035,10 @@ function Tracker({ session, online, onSignOut }) {
         {loaded && products.length === 0 && (
           <div style={{ textAlign: "center", padding: "var(--s7x) var(--s5x)", color: "var(--text-3)" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🎨</div>
-            <p style={{ margin: 0, fontSize: 15 }}>Urakka on tyhjä. Hae ensimmäinen tuote yltä —<br />esim. "High Elf" tai "Combat Patrol Tyranids".</p>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6 }}>
+              Urakka on tyhjä.<br />
+              Lisää ensimmäinen laatikko yltä — hae nimellä tai syötä käsin.
+            </p>
           </div>
         )}
 
