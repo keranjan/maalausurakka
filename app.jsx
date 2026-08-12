@@ -265,6 +265,175 @@ const S = {
 };
 
 /* ---------- Anthropic API ---------- */
+
+/* =============================================================
+   MAALAUSSUUNNITTELIJA-AGENTTI
+
+   Malli ei aja mitään itse — se ehdottaa työkalukutsuja, sovellus
+   suorittaa ne ja syöttää tuloksen takaisin. Silmukka päättyy kun
+   save_plan kutsutaan tai kierrosraja täyttyy.
+
+   AIKA: agentti laskee ajan sisäisesti pilkkoakseen työn istunnoiksi
+   ("Ilta 1: pohjamaalit"), mutta minuutteja EI näytetä käyttäjälle.
+   Istuntojako auttaa; määräaika loisi aikataulupainetta.
+   ============================================================= */
+
+const STOCK_FI = { full: "täysi", half: "puolikas", low: "vähissä", empty: "loppu" };
+const STOCK_COLOR = { full: "var(--ok)", half: "var(--text-2)", low: "var(--warn)", empty: "var(--err)" };
+
+const AGENT_MODEL = "claude-haiku-4-5-20251001";
+const AGENT_MAX_ROUNDS = 8;
+
+/* Vakioreseptit pinnoittain. Nämä ovat sovelluksen omaa tietoa, eivät
+   mallin muistia — malli unohtaa yksityiskohdat satunnaisesti, taulukko ei. */
+const RECIPES = {
+  "sininen panssari": ["Pohja: Macragge Blue, kaksi ohutta kerrosta", "Varjostus: Nuln Oil uriin", "Kerros: Calgar Blue paneeleille", "Reunakorostus: Fenrisian Grey terävimmille reunoille"],
+  "punainen panssari": ["Pohja: Mephiston Red", "Varjostus: Agrax Earthshade", "Kerros: Evil Sunz Scarlet", "Reunakorostus: Evil Sunz Scarlet + Ushabti Bone"],
+  "metalli": ["Pohja: Leadbelcher", "Varjostus: Nuln Oil", "Kuivaharjaus: Runefang Steel"],
+  "kulta": ["Pohja: Retributor Armour", "Varjostus: Agrax Earthshade", "Kerros: Retributor Armour ylöspäin osoittaville pinnoille"],
+  "iho": ["Pohja: Bugman's Glow", "Varjostus: Agrax Earthshade", "Kerros: Cadian Fleshtone", "Korostus: Kislev Flesh nenälle ja poskipäille"],
+  "örkin iho": ["Pohja: Waaagh! Flesh", "Varjostus: Agrax Earthshade", "Kerros: Warboss Green"],
+  "kangas": ["Pohja: Steel Legion Drab", "Varjostus: Agrax Earthshade", "Kerros: Steel Legion Drab + Ushabti Bone"],
+  "luu": ["Pohja: Rakarth Flesh", "Varjostus: Agrax Earthshade", "Kerros: Ushabti Bone"],
+  "jalusta": ["Tekstuuri: Astrogranite tasaisesti", "Kuivaharjaus: Runefang Steel kiville", "Reuna: Steel Legion Drab jalustan reunaan"],
+};
+
+const AGENT_TOOLS = [
+  {
+    name: "search_inventory",
+    description: "Hakee käyttäjän maalivarastosta. Palauttaa maalin nimen, Citadel-tyypin ja jäljellä olevan määrän. Tyhjä hakusana listaa kaiken.",
+    input_schema: { type: "object", properties: {
+      query: { type: "string", description: "Hakusana, esim. 'blue', 'shade', tai tyhjä merkkijono koko varastolle." },
+    }, required: ["query"] },
+  },
+  {
+    name: "get_recipe",
+    description: `Palauttaa vakioreseptin yhdelle pinnalle. Kelvolliset pinnat: ${Object.keys(RECIPES).join(", ")}.`,
+    input_schema: { type: "object", properties: {
+      surface: { type: "string", description: "Pinnan nimi." },
+    }, required: ["surface"] },
+  },
+  {
+    name: "plan_sessions",
+    description: "Jakaa työn maalausiltoihin. Laskee ajan sisäisesti ja lisää kuivumisajan jokaisen varjostusvaiheen jälkeen. Palauttaa vain istuntojaon — älä kerro käyttäjälle minuutteja tai kokonaisaikaa.",
+    input_schema: { type: "object", properties: {
+      models: { type: "number", description: "Miniatyyrien määrä." },
+      session_minutes: { type: "number", description: "Yhden maalausillan pituus minuutteina. Käytä 60 jos käyttäjä ei kerro." },
+      steps: { type: "array", items: { type: "object", properties: {
+        name: { type: "string" },
+        minutes_per_model: { type: "number" },
+        is_shade: { type: "boolean", description: "Tosi jos vaihe on varjostus tai wash." },
+      }, required: ["name", "minutes_per_model"] } },
+    }, required: ["models", "session_minutes", "steps"] },
+  },
+  {
+    name: "save_plan",
+    description: "Tallentaa valmiin suunnitelman. Kutsu tätä viimeisenä, kun varasto on tarkistettu ja istunnot jaettu. ÄLÄ sisällytä minuutteja tai aika-arvioita mihinkään tekstiin.",
+    input_schema: { type: "object", properties: {
+      title: { type: "string", description: "Lyhyt otsikko, esim. 'Clanrats: ruskea kangas'." },
+      models: { type: "number" },
+      steps: { type: "array", items: { type: "object", properties: {
+        name: { type: "string", description: "Vaiheen nimi, esim. 'Pohja'." },
+        paints: { type: "array", items: { type: "string" }, description: "Käytettävät maalit." },
+        session: { type: "number", description: "Monenteenko maalausiltaan vaihe kuuluu (1, 2, 3…)." },
+        tip: { type: "string", description: "Enintään 12 sanaa. Ei aika-arvioita." },
+      }, required: ["name", "paints", "session"] } },
+      missing: { type: "array", items: { type: "string" }, description: "Maalit joita ei löytynyt varastosta." },
+    }, required: ["title", "models", "steps"] },
+  },
+];
+
+/* Puhdas funktio: kuivumisaika varjostuksen jälkeen, jako istuntoihin.
+   Malli ei laske tätä itse — se unohtaisi kuivumisen satunnaisesti. */
+function planSessions({ models, session_minutes, steps }) {
+  const m = Math.max(1, Number(models) || 1);
+  const cap = Math.max(15, Number(session_minutes) || 60);
+  const DRY = 20;                       // kuivumistauko varjostuksen jälkeen
+  let session = 1, used = 0;
+  const out = [];
+  (steps || []).forEach(st => {
+    const cost = m * (Number(st.minutes_per_model) || 1);
+    if (used > 0 && used + cost > cap) { session++; used = 0; }
+    out.push({ name: st.name, session });
+    used += cost;
+    if (st.is_shade) { session++; used = 0; }   // kuivuminen katkaisee illan
+  });
+  return { sessions: session, steps: out, note: `Jaettu ${session} maalausiltaan. Kuivumistauko (${DRY} min) katkaisee illan jokaisen varjostuksen jälkeen.` };
+}
+
+const AGENT_SYSTEM = `Olet Warhammer-maalausavustaja. Suunnittelet miniatyyrierän maalausjärjestyksen käyttäen VAIN maaleja jotka käyttäjä omistaa.
+
+Toimi näin:
+1. Kutsu search_inventory nähdäksesi mitä maaleja on. Huomioi vähissä olevat.
+2. Kutsu get_recipe jokaiselle pinnalle jonka käyttäjä mainitsee.
+3. Kutsu plan_sessions jakaaksesi työn maalausiltoihin.
+4. Kutsu save_plan lopuksi.
+
+TÄRKEÄÄ AJASTA: älä koskaan mainitse minuutteja, tunteja, kokonaisaikaa tai määräaikoja käyttäjälle näkyvässä tekstissä. Istuntojako riittää ("Ilta 1", "Ilta 2"). Aika on vain sisäinen apuväline istuntojen jakamiseen.
+
+Jos resepti vaatii maalia jota varastosta ei löydy, käytä lähintä omistettua vaihtoehtoa ja mainitse puuttuva maali save_planin missing-kentässä.
+
+Vastaa suomeksi. Ole tiivis.`;
+
+/* Agenttisilmukka. onStep saa tiedon jokaisesta kierroksesta UI:ta varten. */
+async function runPaintAgent({ apiKey, brief, onStep, tools }) {
+  if (!apiKey) throw new Error("NO_API_KEY");
+  const messages = [{ role: "user", content: brief }];
+
+  for (let round = 0; round < AGENT_MAX_ROUNDS; round++) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: AGENT_MODEL,
+        max_tokens: 2000,
+        system: AGENT_SYSTEM,
+        tools: AGENT_TOOLS,
+        messages,
+      }),
+    });
+    if (res.status === 401 || res.status === 403) throw new Error("BAD_API_KEY");
+    if (!res.ok) throw new Error("API_ERROR");
+    const data = await res.json();
+
+    /* max_tokens katkaisee työkalun argumenttien JSONin kesken — yleisin
+       agenttisilmukan bugi. Tarkista ennen jäsennystä. */
+    if (data.stop_reason === "max_tokens") throw new Error("TRUNCATED");
+
+    const blocks = data.content || [];
+    const text = blocks.filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+    const calls = blocks.filter(b => b.type === "tool_use");
+
+    if (text) onStep?.({ kind: "text", text });
+    if (!calls.length) return { plan: null, text };
+
+    messages.push({ role: "assistant", content: blocks });
+
+    const results = [];
+    for (const call of calls) {
+      onStep?.({ kind: "tool", name: call.name, input: call.input });
+      if (call.name === "save_plan") {
+        return { plan: call.input, text };
+      }
+      let out;
+      try {
+        out = await tools[call.name]?.(call.input) ?? { error: "tuntematon työkalu" };
+      } catch (e) {
+        out = { error: String(e.message || e) };
+      }
+      onStep?.({ kind: "result", name: call.name, output: out });
+      results.push({ type: "tool_result", tool_use_id: call.id, content: JSON.stringify(out) });
+    }
+    messages.push({ role: "user", content: results });
+  }
+  throw new Error("NO_PLAN");
+}
+
 async function callClaude(apiKey, prompt, model) {
   if (!apiKey) throw new Error("NO_API_KEY");
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -510,38 +679,6 @@ function FactionInput({ value, onCommit, listId, options, style }) {
   );
 }
 
-/* Maaliohje yksikölle. Tallentaa vasta kun fokus poistuu — muuten jokainen
-   näppäimen painallus kirjoittaisi tietokantaan. Esc peruu. */
-function RecipeEditor({ value, onCommit }) {
-  const [draft, setDraft] = useState(value || "");
-  const [focused, setFocused] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => { if (!focused) setDraft(value || ""); }, [value, focused]);
-  const dirty = draft !== (value || "");
-  return (
-    <div style={{ marginTop: 6 }}>
-      <textarea
-        ref={ref}
-        value={draft}
-        rows={3}
-        placeholder={"Miten tämä maalataan?\nEsim. Pohja: Zandri Dust\nVarjostus: Agrax Earthshade\nKuivaharjaus: Ushabti Bone"}
-        onChange={e => setDraft(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => { setFocused(false); if (dirty) onCommit(draft); }}
-        onKeyDown={e => { if (e.key === "Escape") { setDraft(value || ""); setFocused(false); ref.current.blur(); } }}
-        style={{
-          width: "100%", boxSizing: "border-box", resize: "vertical",
-          background: "var(--bg)", border: `1px solid ${dirty ? "var(--gold-dim)" : "var(--line-soft)"}`,
-          borderRadius: "var(--r2)", padding: "8px 10px", color: "var(--text-2)",
-          fontSize: 13, lineHeight: 1.5,
-        }}
-      />
-      <div style={{ fontSize: 10.5, color: dirty ? "var(--gold-dim)" : "var(--text-4)", marginTop: 2 }}>
-        {dirty ? "Tallentuu kun siirryt pois kentästä (Esc peruu)" : "Näkyy myös Seuraava siirto -kortissa"}
-      </div>
-    </div>
-  );
-}
 
 /* Yksikön muokkausrivi. Nimi ja määrä tallentuvat vasta kun fokus poistuu tai
    Enteriä painetaan. Määrän kohdalla tämä ei ole kosmetiikkaa: jos 20 -> 15
@@ -725,7 +862,15 @@ function Tracker({ session, online, onSignOut }) {
   const firstAch = useRef(true);
   const [openFacs, setOpenFacs] = useState([]);     // tyhjä = kaikki kiinni
   const [openProds, setOpenProds] = useState([]);   // tyhjä = kaikki tuotteet kiinni
-  const [openRecipes, setOpenRecipes] = useState([]); // avatut maaliohjeet (unit-id)
+  const [openPlans, setOpenPlans] = useState([]);    // avatut suunnitelmat (unit-id)
+  const [plans, setPlans] = useState({});            // unit-id -> suunnitelma
+  const [agentUnit, setAgentUnit] = useState(null);  // { pid, uid, unit, product, count }
+  const [agentBrief, setAgentBrief] = useState("");
+  const [agentSteps, setAgentSteps] = useState([]);  // silmukan tapahtumat
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [agentErr, setAgentErr] = useState(null);
+  const [inventory, setInventory] = useState([]);    // oma maalivarasto
+  const [invOpen, setInvOpen] = useState(false);
   const [editProds, setEditProds] = useState([]);    // tuotteet muokkaustilassa (ei tallenneta)
   const [notifyPerm, setNotifyPerm] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
   const [photoUrls, setPhotoUrls] = useState({});    // polku -> allekirjoitettu url
@@ -1079,7 +1224,7 @@ function Tracker({ session, online, onSignOut }) {
            käyttäjälle. Aika-arvio muuttaisi harrastuksen suoritteeksi ja
            loisi aikataulupainetta, joka ei kuulu tähän. */
         const weight = n * STAGES[stage].w;
-        cands.push({ pid: p.id, uid2: u.id, product: p.name, unit: u.name, recipe: u.recipe || "", stage, n, weight });
+        cands.push({ pid: p.id, uid2: u.id, product: p.name, unit: u.name, stage, n, weight });
       });
     }));
     // kesken olevat ennen koskemattomia, sitten nopein ensin
@@ -1088,6 +1233,150 @@ function Tracker({ session, online, onSignOut }) {
   }, [products]);
 
   const suggestion = suggestions.length ? suggestions[suggIdx % suggestions.length] : null;
+
+  /* ---- maalivarasto ja suunnitelmat ---- */
+  const loadInventory = async () => {
+    try {
+      const { data, error } = await supa.rpc("search_inventory", { query: "" });
+      if (error) throw error;
+      setInventory(data || []);
+    } catch (e) { console.warn("Varaston haku epäonnistui", e); }
+  };
+
+  const loadPlans = async () => {
+    try {
+      const { data, error } = await supa.from("paint_plans")
+        .select("id, unit_id, title, models, steps, created_at")
+        .eq("user_id", userId).eq("is_current", true);
+      if (error) throw error;
+      setPlans(Object.fromEntries((data || []).map(p => [p.unit_id, p])));
+    } catch (e) { console.warn("Suunnitelmien haku epäonnistui", e); }
+  };
+
+  useEffect(() => {
+    if (!loaded) return;
+    loadInventory(); loadPlans();
+    // eslint-disable-next-line
+  }, [loaded]);
+
+  /* Agentin työkalut. Malli ei aja mitään itse — nämä ovat ainoat
+     toiminnot joihin se pääsee käsiksi. */
+  const agentTools = {
+    search_inventory: async ({ query }) => {
+      const { data, error } = await supa.rpc("search_inventory", { query: query || "" });
+      if (error) return { error: error.message };
+      if (!data?.length) return { paints: [], note: "Varasto on tyhjä tai haku ei tuottanut osumia." };
+      return { paints: data.map(p => ({ name: p.name, range: p.range, stock: p.stock })) };
+    },
+    get_recipe: async ({ surface }) => {
+      const key = (surface || "").toLowerCase().trim();
+      const hit = RECIPES[key] || RECIPES[Object.keys(RECIPES).find(k => k.includes(key) || key.includes(k)) || ""];
+      return hit ? { surface: key, steps: hit }
+                 : { error: `Tuntematon pinta. Kelvolliset: ${Object.keys(RECIPES).join(", ")}` };
+    },
+    plan_sessions: async (input) => planSessions(input),
+  };
+
+  const savePlan = async (plan, unit) => {
+    const row = {
+      user_id: userId, unit_id: unit.uid, unit_name: unit.unit, product_name: unit.product,
+      title: plan.title || unit.unit, models: plan.models || unit.count,
+      steps: plan.steps || [], is_current: true,
+    };
+    const { data, error } = await supa.from("paint_plans").insert(row).select().maybeSingle();
+    if (error) throw error;
+    setPlans(prev => ({ ...prev, [unit.uid]: data }));
+    /* merkitse käytetyt maalit — triggeri päivittää varaston last_used_at */
+    const names = [...new Set((plan.steps || []).flatMap(st => st.paints || []))];
+    if (names.length && data) {
+      const { data: pl } = await supa.from("paints").select("id, name").in("name", names);
+      if (pl?.length) await supa.from("plan_paints")
+        .insert(pl.map(x => ({ plan_id: data.id, paint_id: x.id })));
+    }
+    return data;
+  };
+
+  const runAgent = async () => {
+    if (!agentUnit || agentBusy) return;
+    setAgentBusy(true); setAgentErr(null); setAgentSteps([]);
+    try {
+      const brief = `${agentUnit.count} × ${agentUnit.unit} (${agentUnit.product}). ${agentBrief.trim() || "Suunnittele maalausjärjestys."}`;
+      const { plan } = await runPaintAgent({
+        apiKey, brief, tools: agentTools,
+        onStep: ev => setAgentSteps(prev => [...prev, ev]),
+      });
+      if (!plan) throw new Error("NO_PLAN");
+      await savePlan(plan, agentUnit);
+      setOpenPlans(prev => prev.includes(agentUnit.uid) ? prev : [...prev, agentUnit.uid]);
+      setAgentUnit(null); setAgentBrief("");
+    } catch (e) {
+      const m = e.message;
+      setAgentErr(
+        m === "NO_API_KEY" ? "Lisää Anthropic API -avain asetuksista (⚙)."
+        : m === "BAD_API_KEY" ? "API-avain ei kelpaa. Tarkista se asetuksista (⚙)."
+        : m === "TRUNCATED" ? "Vastaus katkesi kesken. Yritä uudelleen lyhyemmällä kuvauksella."
+        : m === "NO_PLAN" ? "Agentti ei saanut suunnitelmaa valmiiksi. Yritä uudelleen."
+        : "Suunnittelu epäonnistui. Tarkista yhteys ja yritä uudelleen.");
+    }
+    setAgentBusy(false);
+  };
+
+  /* ---- maalivaraston ylläpito ---- */
+  const [invQuery, setInvQuery] = useState("");
+  const [catalogue, setCatalogue] = useState([]);
+
+  const searchCatalogue = async (q) => {
+    setInvQuery(q);
+    if (!q.trim()) { setCatalogue([]); return; }
+    try {
+      const { data } = await supa.from("paints")
+        .select("id, name, range, hex, metallic")
+        .ilike("name", `%${q.trim()}%`)
+        .order("name").limit(15);
+      setCatalogue(data || []);
+    } catch (e) { console.warn(e); }
+  };
+
+  const addToInventory = async (paint) => {
+    try {
+      await supa.from("collection").upsert(
+        { user_id: userId, paint_id: paint.id, stock: "full" },
+        { onConflict: "user_id,paint_id" });
+      setInvQuery(""); setCatalogue([]);
+      loadInventory();
+    } catch (e) { console.warn("Maalin lisäys epäonnistui", e); }
+  };
+
+  /* Neliportainen tila, koska purkkia katsomalla pystyy arvioimaan
+     vain sen verran. Prosentti olisi valetarkkuutta. */
+  const cycleStock = async (name) => {
+    const order = ["full", "half", "low", "empty"];
+    const cur = inventory.find(x => x.name === name);
+    if (!cur) return;
+    const next = order[(order.indexOf(cur.stock) + 1) % order.length];
+    setInventory(prev => prev.map(x => x.name === name ? { ...x, stock: next } : x));
+    try {
+      const { data: p } = await supa.from("paints").select("id").eq("name", name).maybeSingle();
+      if (p) await supa.from("collection")
+        .update({ stock: next, updated_at: new Date().toISOString() })
+        .eq("user_id", userId).eq("paint_id", p.id);
+    } catch (e) { console.warn(e); loadInventory(); }
+  };
+
+  const removeFromInventory = async (name) => {
+    setInventory(prev => prev.filter(x => x.name !== name));
+    try {
+      const { data: p } = await supa.from("paints").select("id").eq("name", name).maybeSingle();
+      if (p) await supa.from("collection").delete().eq("user_id", userId).eq("paint_id", p.id);
+    } catch (e) { console.warn(e); loadInventory(); }
+  };
+
+  const deletePlan = async (unitId) => {
+    if (!window.confirm("Poistetaanko suunnitelma?")) return;
+    setPlans(prev => { const n = { ...prev }; delete n[unitId]; return n; });
+    try { await supa.from("paint_plans").update({ is_current: false }).eq("user_id", userId).eq("unit_id", unitId); }
+    catch (e) { console.warn(e); }
+  };
 
   /* kaikki kuvat uusin ensin — galleriaa ja esilatausta varten */
   const allPhotos = useMemo(() => {
@@ -1338,9 +1627,6 @@ function Tracker({ session, online, onSignOut }) {
 
   const setSystem = (pid, system) => setProducts(prev => prev.map(p => (p.id === pid ? { ...p, system } : p)));
   const setFaction = (pid, faction) => setProducts(prev => prev.map(p => (p.id === pid ? { ...p, faction } : p)));
-  const setRecipe = (pid, unitId, recipe) => setProducts(prev => prev.map(p => p.id !== pid ? p : {
-    ...p, units: p.units.map(u => u.id !== unitId ? u : { ...u, recipe }),
-  }));
 
   /* ---- maalauskuvat ---- */
 
@@ -1529,6 +1815,99 @@ function Tracker({ session, online, onSignOut }) {
         }}>{photoErr}</div>
       )}
 
+      {/* --- maalaussuunnittelija --- */}
+      {agentUnit && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 75, background: "rgba(6,6,8,.9)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--s4x)",
+        }}>
+          <div className="rise panel" style={{
+            width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto",
+            borderColor: "var(--gold-deep)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Maalaussuunnittelija</div>
+                <div className="display" style={{ fontSize: 17, color: "var(--text)", marginTop: 3 }}>
+                  {agentUnit.count} × {agentUnit.unit}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-3)" }}>{agentUnit.product}</div>
+              </div>
+              {!agentBusy && (
+                <button onClick={() => setAgentUnit(null)} aria-label="Sulje"
+                  style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
+              )}
+            </div>
+
+            {!agentBusy && (
+              <>
+                <textarea
+                  value={agentBrief}
+                  onChange={e => setAgentBrief(e.target.value)}
+                  rows={3}
+                  placeholder="Kuvaile erä: värit, pinnat, illan pituus. Esim. &quot;siniset panssarit, kultaiset koristeet, kivijalustat, 60 min iltaisin&quot;"
+                  className="field"
+                  style={{ resize: "vertical", lineHeight: 1.5, fontSize: 14 }}
+                />
+                <p className="hint">
+                  Agentti tarkistaa maalivarastosi, hakee reseptit pinnoittain ja jakaa työn maalausiltoihin.
+                  Se käyttää vain maaleja jotka omistat.
+                </p>
+                {inventory.length === 0 && (
+                  <p style={{ fontSize: 12, color: "var(--warn)", margin: "8px 0 0", lineHeight: 1.5 }}>
+                    Maalivarastosi on tyhjä. Lisää maaleja asetuksista (⚙ → Maalivarasto),
+                    muuten agentti ei tiedä mitä sinulla on.
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* silmukan eteneminen */}
+            {(agentBusy || agentSteps.length > 0) && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                {agentSteps.map((ev, i) => (
+                  <div key={i} style={{ fontSize: 12, lineHeight: 1.5 }}>
+                    {ev.kind === "tool" && (
+                      <span style={{ color: "var(--gold-dim)" }}>
+                        ⚙ {ev.name}
+                        {ev.input?.query !== undefined && ` · "${ev.input.query || "kaikki"}"`}
+                        {ev.input?.surface && ` · ${ev.input.surface}`}
+                      </span>
+                    )}
+                    {ev.kind === "result" && (
+                      <span style={{ color: "var(--text-4)", paddingLeft: 14 }}>
+                        {ev.output?.paints ? `→ ${ev.output.paints.length} maalia`
+                          : ev.output?.steps ? `→ ${ev.output.steps.length} vaihetta`
+                          : ev.output?.error ? `→ ${ev.output.error}` : "→ valmis"}
+                      </span>
+                    )}
+                    {ev.kind === "text" && (
+                      <span style={{ color: "var(--text-2)" }}>{ev.text}</span>
+                    )}
+                  </div>
+                ))}
+                {agentBusy && (
+                  <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 2 }}>⏳ Suunnittelee…</div>
+                )}
+              </div>
+            )}
+
+            {agentErr && (
+              <p style={{ color: "var(--err)", fontSize: 13, margin: "10px 0 0", lineHeight: 1.5 }}>{agentErr}</p>
+            )}
+
+            {!agentBusy && (
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <button onClick={runAgent} className="btn btn-gold" style={{ flex: 1 }}>
+                  {agentSteps.length ? "Yritä uudelleen" : "Suunnittele"}
+                </button>
+                <button onClick={() => setAgentUnit(null)} className="btn btn-quiet">Peru</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* --- kuvan suurennos --- */}
       {lightbox && (
         <div
@@ -1624,6 +2003,74 @@ function Tracker({ session, online, onSignOut }) {
               {settingsMsg && <span style={{ fontSize: 13, color: settingsMsg === "Tallennettu." ? "var(--ok)" : "var(--err)" }}>{settingsMsg}</span>}
             </div>
 
+            {/* ---- maalivarasto ---- */}
+            <div style={{ borderTop: "1px solid var(--line-soft)", marginTop: 14, paddingTop: 12 }}>
+              <button onClick={() => setInvOpen(v => !v)} aria-expanded={invOpen}
+                className="acc-head" style={{ padding: "2px 0" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <Chevron open={invOpen} />
+                  <span style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 700 }}>Maalivarasto</span>
+                </span>
+                <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                  {inventory.length} {inventory.length === 1 ? "maali" : "maalia"}
+                </span>
+              </button>
+
+              {invOpen && (
+                <div className="acc-body" style={{ marginTop: 10 }}>
+                  <input value={invQuery} onChange={e => searchCatalogue(e.target.value)}
+                    placeholder="Lisää maali — osittainen nimi riittää, esim. 'agr'" className="field" />
+
+                  {catalogue.length > 0 && (
+                    <div className="panel flush" style={{ marginTop: 6, overflow: "hidden" }}>
+                      {catalogue.map(c => (
+                        <button key={c.id} className="row" onClick={() => addToInventory(c)}>
+                          <span style={{ width: 14, height: 14, borderRadius: "var(--r1)", background: c.hex || "var(--surface-3)", flexShrink: 0, border: "1px solid var(--line)" }} />
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: "block", fontSize: 13.5, color: "var(--text)" }}>{c.name}</span>
+                            <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                              {c.range}{c.metallic ? " · metalli" : ""}
+                            </span>
+                          </span>
+                          <span style={{ color: "var(--gold)", fontSize: 16, flexShrink: 0 }}>+</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="hint">
+                    Napauta maalin tilaa vaihtaaksesi sitä: täysi → puolikas → vähissä → loppu.
+                    Neljä porrasta riittää, koska purkkia katsomalla ei enempää näe.
+                  </p>
+
+                  {inventory.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
+                      {inventory.map(pt => (
+                        <div key={pt.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 14, height: 14, borderRadius: "var(--r1)", background: pt.hex || "var(--surface-3)", flexShrink: 0, border: "1px solid var(--line)" }} />
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {pt.name}
+                            <span style={{ color: "var(--text-4)", fontSize: 11 }}> · {pt.range}</span>
+                          </span>
+                          <button onClick={() => cycleStock(pt.name)}
+                            title="Vaihda varastotasoa"
+                            style={{
+                              background: "var(--surface-2)", border: `1px solid ${STOCK_COLOR[pt.stock]}`,
+                              borderRadius: "var(--rf)", padding: "2px 10px", fontSize: 11,
+                              color: STOCK_COLOR[pt.stock], cursor: "pointer", flexShrink: 0, minWidth: 74,
+                            }}>
+                            {STOCK_FI[pt.stock]}
+                          </button>
+                          <button onClick={() => removeFromInventory(pt.name)} aria-label="Poista maali"
+                            style={{ background: "none", border: "none", color: "var(--text-4)", fontSize: 15, cursor: "pointer", padding: "2px 4px", flexShrink: 0 }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* ---- muistutukset ---- */}
             <div style={{ borderTop: "1px solid var(--line-soft)", marginTop: 14, paddingTop: 12 }}>
               <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 6, fontWeight: 700 }}>Muistutukset</div>
@@ -1674,19 +2121,26 @@ function Tracker({ session, online, onSignOut }) {
               odottaa {STAGES[suggestion.stage].verb}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{suggestion.product}</div>
-            {suggestion.recipe && (
-              <div style={{
-                marginTop: 10, background: "var(--surface-2)", border: "1px solid var(--line-soft)",
-                borderRadius: "var(--r2)", padding: "8px 10px",
-              }}>
-                <div style={{ fontSize: 10, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>
-                  🎨 Maaliohje
+            {(() => {
+              const plan = plans[suggestion.uid2];
+              if (!plan?.steps?.length) return null;
+              const first = plan.steps.find(x => (x.session || 1) === Math.min(...plan.steps.map(y => y.session || 1)));
+              if (!first) return null;
+              return (
+                <div style={{
+                  marginTop: 10, background: "var(--bg)", border: "1px solid var(--line-soft)",
+                  borderRadius: "var(--r2)", padding: "8px 10px",
+                }}>
+                  <div className="eyebrow" style={{ color: "var(--gold-dim)", marginBottom: 4 }}>
+                    🧭 Suunnitelmasta
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                    <strong style={{ color: "var(--text)" }}>{first.name}</strong>
+                    {!!(first.paints || []).length && ` — ${first.paints.join(", ")}`}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
-                  {suggestion.recipe}
-                </div>
-              </div>
-            )}
+              );
+            })()}
             <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
               <button onClick={() => goToProduct(suggestion.pid)} className="btn btn-gold" style={{ padding: "9px 16px", fontSize: 14 }}>
                 Näytä
@@ -2225,26 +2679,100 @@ function Tracker({ session, online, onSignOut }) {
                                           </label>
                                         </div>
 
-                                        {/* --- maaliohje --- */}
-                                        <button
-                                          onClick={() => setOpenRecipes(prev => prev.includes(u.id) ? prev.filter(x => x !== u.id) : [...prev, u.id])}
-                                          aria-expanded={openRecipes.includes(u.id)}
-                                          style={{
-                                            display: "flex", alignItems: "center", gap: 5, marginTop: 8,
-                                            background: "none", border: "none", padding: "2px 0", cursor: "pointer", fontSize: 11.5,
-                                            color: u.recipe ? "var(--gold-dim)" : "var(--text-4)",
-                                          }}>
-                                          <Chevron open={openRecipes.includes(u.id)} />
-                                          🎨 {u.recipe ? "Maaliohje" : "Lisää maaliohje"}
-                                          {u.recipe && !openRecipes.includes(u.id) && (
-                                            <span style={{ color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
-                                              — {u.recipe.split("\n")[0]}
-                                            </span>
-                                          )}
-                                        </button>
-                                        {openRecipes.includes(u.id) && (
-                                          <RecipeEditor value={u.recipe || ""} onCommit={v => setRecipe(p.id, u.id, v)} />
-                                        )}
+                                        {/* --- maalaussuunnitelma --- */}
+                                        {(() => {
+                                          const plan = plans[u.id];
+                                          const open = openPlans.includes(u.id);
+                                          return (
+                                            <>
+                                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                                                {plan ? (
+                                                  <button
+                                                    onClick={() => setOpenPlans(prev => open ? prev.filter(x => x !== u.id) : [...prev, u.id])}
+                                                    aria-expanded={open}
+                                                    style={{
+                                                      display: "flex", alignItems: "center", gap: 5, background: "none",
+                                                      border: "none", padding: "2px 0", cursor: "pointer", fontSize: 11.5,
+                                                      color: "var(--gold-dim)",
+                                                    }}>
+                                                    <Chevron open={open} />
+                                                    🧭 {plan.title}
+                                                    {!open && (
+                                                      <span style={{ color: "var(--text-4)" }}>
+                                                        — {Math.max(...(plan.steps || [{ session: 1 }]).map(x => x.session || 1))} iltaa
+                                                      </span>
+                                                    )}
+                                                  </button>
+                                                ) : (
+                                                  <button
+                                                    onClick={() => { setAgentUnit({ pid: p.id, uid: u.id, unit: u.name, product: p.name, count: u.minis.length }); setAgentSteps([]); setAgentErr(null); }}
+                                                    style={{
+                                                      display: "flex", alignItems: "center", gap: 5, background: "none",
+                                                      border: "1px dashed var(--line)", borderRadius: "var(--r2)",
+                                                      padding: "5px 10px", cursor: "pointer", fontSize: 11.5, color: "var(--text-3)",
+                                                    }}>
+                                                    🧭 Suunnittele maalaus
+                                                  </button>
+                                                )}
+                                              </div>
+
+                                              {plan && open && (
+                                                <div className="rise" style={{
+                                                  marginTop: 8, padding: "var(--s3x)", borderRadius: "var(--r2)",
+                                                  background: "var(--bg)", border: "1px solid var(--line-soft)",
+                                                }}>
+                                                  {Object.entries((plan.steps || []).reduce((acc, st) => {
+                                                    const k = st.session || 1;
+                                                    (acc[k] = acc[k] || []).push(st); return acc;
+                                                  }, {})).map(([sess, steps]) => (
+                                                    <div key={sess} style={{ marginBottom: 10 }}>
+                                                      <div className="eyebrow" style={{ color: "var(--gold-dim)", marginBottom: 4 }}>
+                                                        Ilta {sess}
+                                                      </div>
+                                                      {steps.map((st, i) => (
+                                                        <div key={i} style={{ marginBottom: 6, paddingLeft: 2 }}>
+                                                          <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>{st.name}</div>
+                                                          {!!(st.paints || []).length && (
+                                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 3 }}>
+                                                              {st.paints.map(pn => {
+                                                                const inv = inventory.find(x => x.name === pn);
+                                                                const low = inv && (inv.stock === "low" || inv.stock === "empty");
+                                                                return (
+                                                                  <span key={pn} title={inv ? `Varastossa: ${STOCK_FI[inv.stock]}` : "Ei varastossa"}
+                                                                    style={{
+                                                                      display: "inline-flex", alignItems: "center", gap: 5,
+                                                                      fontSize: 11.5, padding: "2px 8px", borderRadius: "var(--rf)",
+                                                                      background: "var(--surface-2)",
+                                                                      border: `1px solid ${!inv ? "var(--err)" : low ? "var(--warn)" : "var(--line-soft)"}`,
+                                                                      color: !inv ? "var(--err)" : "var(--text-2)",
+                                                                    }}>
+                                                                    {inv?.hex && <span style={{ width: 9, height: 9, borderRadius: "var(--rf)", background: inv.hex, display: "inline-block", flexShrink: 0 }} />}
+                                                                    {pn}
+                                                                    {!inv && " ✕"}
+                                                                    {low && " ⚠"}
+                                                                  </span>
+                                                                );
+                                                              })}
+                                                            </div>
+                                                          )}
+                                                          {st.tip && <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 3, fontStyle: "italic" }}>{st.tip}</div>}
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  ))}
+                                                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                                                    <button className="btn btn-quiet btn-sm"
+                                                      onClick={() => { setAgentUnit({ pid: p.id, uid: u.id, unit: u.name, product: p.name, count: u.minis.length }); setAgentSteps([]); setAgentErr(null); }}>
+                                                      Suunnittele uudelleen
+                                                    </button>
+                                                    <button className="btn btn-quiet btn-sm" style={{ color: "var(--err)" }}
+                                                      onClick={() => deletePlan(u.id)}>Poista</button>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
                                       </div>
                                     );
                                   })}
