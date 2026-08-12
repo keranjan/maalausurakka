@@ -162,9 +162,14 @@ const PHOTO_BUCKET = "maalauskuvat";
 const PHOTO_MAX_DIM = 1600;
 const PHOTO_QUALITY = 0.82;
 
-async function resizeImage(file) {
+/* Tunnistukseen riittää pienempi kuva kuin galleriaan: kuvan hinta
+   tokeneina on suunnilleen leveys × korkeus / 750, joten 1000 px
+   puolittaa kustannuksen ilman että vaiheen tunnistus kärsii. */
+const PHOTO_VISION_DIM = 1000;
+
+async function resizeImage(file, maxDim = PHOTO_MAX_DIM) {
   const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, PHOTO_MAX_DIM / Math.max(bmp.width, bmp.height));
+  const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
   const w = Math.round(bmp.width * scale);
   const h = Math.round(bmp.height * scale);
   const canvas = document.createElement("canvas");
@@ -177,6 +182,75 @@ async function resizeImage(file) {
     canvas.toBlob(b => b ? res(b) : rej(new Error("Kuvan pakkaus epäonnistui")),
       "image/jpeg", PHOTO_QUALITY));
 }
+
+const blobToBase64 = (blob) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result).split(",")[1]);
+  r.onerror = () => rej(new Error("Kuvan luku epäonnistui"));
+  r.readAsDataURL(blob);
+});
+
+/* ---- vaiheen tunnistus kuvasta ----
+   Yksi kutsu, ei keskustelua: keskustelussa kuva lähetettäisiin uudelleen
+   joka vuorolla ja kustannus kertautuisi. Korjaukset tehdään
+   käyttöliittymässä, ei mallille puhumalla.
+
+   Malli EI koskaan ehdota "valmis"-vaihetta. Reunakorostukset ja jalustan
+   viimeistely eivät erotu puhelinkuvasta luotettavasti, ja väärä
+   valmis-merkintä pilaisi gallerian, saavutukset ja seuraavan siirron.
+   Alaspäin erehtyminen korjaantuu yhdellä napautuksella, ylöspäin
+   erehtyminen jää huomaamatta. */
+async function recognizeStage({ apiKey, base64, unit, count, currentStages }) {
+  if (!apiKey) throw new Error("NO_API_KEY");
+  const tally = [0,1,2,3,4].map(i => `${STAGES[i].name}: ${currentStages.filter(x => x === i).length}`).join(", ");
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: AGENT_MODEL,
+      max_tokens: 400,
+      messages: [{ role: "user", content: [
+        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+        { type: "text", text: `Kuvassa on miniatyyrejä yksiköstä "${unit}" (${count} kpl yhteensä).
+Nykyinen kirjattu tila: ${tally}.
+
+Arvioi mihin vaiheeseen kuvan miniatyyrit ovat edenneet. Vaihtoehdot:
+- "kasattu": harmaata tai värillistä muovia, ei maalia
+- "pohjamaalattu": tasainen yksivärinen pohja (musta, harmaa, luunvalkoinen), ei muita värejä
+- "maalaus aloitettu": useampia värejä, mutta työ on kesken
+
+ÄLÄ koskaan vastaa "valmis". Reunakorostukset ja jalustan viimeistely eivät
+erotu kuvasta luotettavasti, joten valmiiksi merkitseminen jää käyttäjälle.
+
+Jos et pysty päättelemään vaihetta, käytä "epavarma".
+Älä arvaa miniatyyrien lukumäärää tarkasti — arvioi vain karkeasti montako
+kuvassa näkyy, käyttäjä korjaa luvun.
+
+Vastaa VAIN JSON-objektina, ei muuta tekstiä:
+{"stage": "...", "visible": 12, "note": "enintään 12 sanaa suomeksi"}` },
+      ]}],
+    }),
+  });
+  if (res.status === 401 || res.status === 403) throw new Error("BAD_API_KEY");
+  if (!res.ok) throw new Error("API_ERROR");
+  const data = await res.json();
+  if (data.stop_reason === "max_tokens") throw new Error("TRUNCATED");
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  const clean = text.replace(/```json|```/g, "").trim();
+  const a = clean.indexOf("{"), b = clean.lastIndexOf("}");
+  if (a === -1 || b === -1) throw new Error("PARSE_ERROR");
+  return JSON.parse(clean.slice(a, b + 1));
+}
+
+const STAGE_BY_NAME = {
+  "kasattu": 1, "pohjamaalattu": 2, "maalaus aloitettu": 3,
+};
 
 /* VAPID-avaimen muunnos push-tilausta varten */
 function urlB64ToU8(base64) {
@@ -951,6 +1025,9 @@ function Tracker({ session, online, onSignOut }) {
   const [lightbox, setLightbox] = useState(null);    // { url, unit, product, at }
   const [photoPrompt, setPhotoPrompt] = useState(null); // { pid, uid, unit, product }
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [recog, setRecog] = useState(null);       // { pid, uid, unit, stage, count, note, file, total }
+  const [recogBusy, setRecogBusy] = useState(null);
+  const [recogErr, setRecogErr] = useState(null);
   const [retry, setRetry] = useState(0);
   const skipSave = useRef(true);
   const saveTimer = useRef(null);
@@ -1768,6 +1845,67 @@ function Tracker({ session, online, onSignOut }) {
     setUploading(null);
   };
 
+  /* ---- kuvasta kirjaus ---- */
+  const recognizeFromPhoto = async (p, u, file) => {
+    if (!file || recogBusy) return;
+    setRecogBusy(u.id); setRecogErr(null);
+    try {
+      if (!file.type.startsWith("image/")) throw new Error("EI_KUVA");
+      const small = await resizeImage(file, PHOTO_VISION_DIM);
+      const base64 = await blobToBase64(small);
+      const r = await recognizeStage({
+        apiKey, base64, unit: u.name, count: u.minis.length, currentStages: u.minis,
+      });
+      const stage = STAGE_BY_NAME[String(r.stage || "").toLowerCase()];
+      if (!stage) {
+        setRecogErr("Vaihetta ei saatu selville kuvasta. Merkitse käsin tai kokeile toista kuvaa.");
+        setRecogBusy(null);
+        return;
+      }
+      /* Esitäyttö: kaikki minit jotka ovat vielä tätä vaihetta aiemmin.
+         Maalausillassa tehdään harvoin 19/20 — tavallisempaa on koko erä.
+         Mallin oma arvio ei koskaan ylitä yksikön kokoa. */
+      const behind = u.minis.filter(x => x < stage).length;
+      const guess = Math.min(u.minis.length, Math.max(1, parseInt(r.visible) || behind || u.minis.length));
+      setRecog({
+        pid: p.id, uid: u.id, unit: u.name, product: p.name,
+        stage, count: behind > 0 ? behind : guess, total: u.minis.length,
+        behind, note: r.note || "", file,
+        overflow: (parseInt(r.visible) || 0) > u.minis.length,
+      });
+    } catch (e) {
+      const m = e.message;
+      setRecogErr(
+        m === "NO_API_KEY" ? "Lisää Anthropic API -avain asetuksista (⚙)."
+        : m === "BAD_API_KEY" ? "API-avain ei kelpaa. Tarkista se asetuksista (⚙)."
+        : m === "EI_KUVA" ? "Valitse kuvatiedosto."
+        : "Tunnistus epäonnistui. Tarkista yhteys ja yritä uudelleen.");
+      setTimeout(() => setRecogErr(null), 6000);
+    }
+    setRecogBusy(null);
+  };
+
+  /* Hyväksyntä: nostaa N minia annettuun vaiheeseen. Vain eteenpäin —
+     tunnistus ei koskaan peruuta jo tehtyä työtä. */
+  const applyRecognition = async (alsoSavePhoto) => {
+    if (!recog) return;
+    const p = products.find(x => x.id === recog.pid);
+    const u = p?.units.find(x => x.id === recog.uid);
+    if (!u) { setRecog(null); return; }
+    const idx = u.minis
+      .map((v, i) => ({ v, i }))
+      .filter(x => x.v < recog.stage)
+      .sort((a, b) => b.v - a.v || a.i - b.i)   // pisimmälle ehtineet ensin
+      .slice(0, recog.count)
+      .map(x => x.i);
+    if (idx.length) {
+      applyChanges(recog.pid, recog.uid, idx.map(i => ({ idx: i, from: u.minis[i], to: recog.stage })));
+    }
+    const file = recog.file;
+    setRecog(null);
+    if (alsoSavePhoto && file) await addPhoto(p.id, u.id, file);
+  };
+
   const removePhoto = async (pid, unitId, path) => {
     if (!window.confirm("Poistetaanko kuva?")) return;
     setProducts(prev => prev.map(p => p.id !== pid ? p : {
@@ -2005,6 +2143,119 @@ function Tracker({ session, online, onSignOut }) {
             )}
           </div>
         </div>
+      )}
+
+      {/* --- kuvasta kirjaus: vahvistus --- */}
+      {recog && (() => {
+        const prod = products.find(x => x.id === recog.pid);
+        const unit = prod?.units.find(x => x.id === recog.uid);
+        if (!unit) return null;
+        const st = STAGES[recog.stage];
+        const max = unit.minis.filter(x => x < recog.stage).length;
+        return (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 76, background: "rgba(6,6,8,.9)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--s4x)",
+          }}>
+            <div className="rise panel" style={{
+              width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto",
+              borderColor: "var(--gold-deep)",
+            }}>
+              <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Kirjaa kuvasta</div>
+              <div className="display" style={{ fontSize: 17, color: "var(--text)", marginTop: 3 }}>
+                {recog.unit}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>{recog.product}</div>
+
+              {/* tunnistettu vaihe */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 9, padding: "10px 12px",
+                background: "var(--bg)", border: `1px solid ${st.color}`,
+                borderRadius: "var(--r2)", marginBottom: 10,
+              }}>
+                <span className={"chip chip-" + recog.stage} style={{ cursor: "default" }}>{st.short}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 14, color: st.color, fontWeight: 600 }}>{st.name}</span>
+                  {recog.note && (
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-3)", marginTop: 1 }}>{recog.note}</span>
+                  )}
+                </span>
+              </div>
+
+              {recog.overflow && (
+                <p style={{ fontSize: 12, color: "var(--warn)", margin: "0 0 10px", lineHeight: 1.5 }}>
+                  Kuvassa näyttää olevan enemmän kuin {recog.total} miniä — onko siinä useampi yksikkö?
+                  Tarkista määrä alta.
+                </p>
+              )}
+
+              {/* määrä: mallin arvio on vain oletusarvo */}
+              <label style={{ display: "block", fontSize: 12.5, color: "var(--text-2)", marginBottom: 5 }}>
+                Montako miniä siirtyy tähän vaiheeseen?
+              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <input type="number" min="1" max={max} value={recog.count}
+                  onChange={e => setRecog(r => ({ ...r, count: Math.max(1, Math.min(max, parseInt(e.target.value) || 1)) }))}
+                  className="field" style={{ width: 78, flexShrink: 0 }} />
+                <button className="btn btn-quiet btn-sm"
+                  onClick={() => setRecog(r => ({ ...r, count: max }))}>
+                  Kaikki ({max})
+                </button>
+              </div>
+              <p className="hint" style={{ marginBottom: 12 }}>
+                Tai napauta suoraan minejä alta — ne jotka siirtyvät näkyvät korostettuina.
+              </p>
+
+              {/* minirivi: korjaus ja hyväksyntä ovat sama ele */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 14 }}>
+                {unit.minis.map((v, i) => {
+                  const eligible = v < recog.stage;
+                  const order = unit.minis.map((vv, ii) => ({ vv, ii }))
+                    .filter(x => x.vv < recog.stage)
+                    .sort((a, b) => b.vv - a.vv || a.ii - b.ii)
+                    .slice(0, recog.count).map(x => x.ii);
+                  const selected = order.includes(i);
+                  return (
+                    <button key={i}
+                      className={"chip chip-" + (selected ? recog.stage : v)}
+                      title={eligible ? `#${i + 1}: ${STAGES[v].name}` : `#${i + 1}: jo ${STAGES[v].name}`}
+                      onClick={() => {
+                        if (!eligible) return;
+                        const pos = order.indexOf(i);
+                        setRecog(r => ({ ...r, count: pos >= 0 ? pos : Math.min(max, order.length + 1) }));
+                      }}
+                      style={{
+                        opacity: eligible ? 1 : 0.3,
+                        outline: selected ? "2px solid var(--gold)" : "none",
+                        outlineOffset: 1,
+                        cursor: eligible ? "pointer" : "default",
+                      }}>
+                      {selected ? st.short : STAGES[v].short}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn btn-gold" style={{ flex: "1 1 150px" }}
+                  onClick={() => applyRecognition(true)}>
+                  Kirjaa ja tallenna kuva
+                </button>
+                <button className="btn btn-quiet" onClick={() => applyRecognition(false)}>
+                  Vain kirjaus
+                </button>
+                <button className="btn btn-quiet" onClick={() => setRecog(null)}>Peru</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {recogErr && (
+        <div className="toast" style={{
+          bottom: 16, top: "auto", background: "#3A1A1A", border: "1px solid #C05050",
+          padding: "10px 16px", color: "#FBEDED", fontSize: 13,
+        }}>{recogErr}</div>
       )}
 
       {/* --- kuvan suurennos --- */}
@@ -2761,6 +3012,20 @@ function Tracker({ session, online, onSignOut }) {
                                                 : <span style={{ fontSize: 14, opacity: .5 }}>🖼️</span>}
                                             </button>
                                           ))}
+                                          <label
+                                            title="Ota kuva ja kirjaa vaihe automaattisesti"
+                                            style={{
+                                              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                              height: 46, padding: "0 11px",
+                                              borderRadius: "var(--r1)", cursor: recogBusy === u.id ? "wait" : "pointer",
+                                              border: "1px dashed var(--gold-deep)", color: "var(--gold-dim)", fontSize: 12,
+                                            }}>
+                                            {recogBusy === u.id ? "⏳ Tunnistaa…" : "🔍 Kirjaa kuvasta"}
+                                            <input type="file" accept="image/*" capture="environment"
+                                              disabled={!!recogBusy}
+                                              onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) recognizeFromPhoto(p, u, f); }}
+                                              style={{ display: "none" }} />
+                                          </label>
                                           <label
                                             title="Lisää kuva tästä yksiköstä"
                                             style={{
