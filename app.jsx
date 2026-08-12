@@ -1307,11 +1307,30 @@ function Tracker({ session, online, onSignOut }) {
   const suggestion = suggestions.length ? suggestions[suggIdx % suggestions.length] : null;
 
   /* ---- maalivarasto ja suunnitelmat ---- */
+  /* Varastonäkymä hakee suoraan taulusta, EI search_inventory-RPC:llä.
+     RPC:ssä on tarkoituksella `limit 40`, koska sen tulos menee agentin
+     kontekstiin joka kierroksella ja maksaa tokeneina. Käyttöliittymässä
+     sama raja piilottaisi maalit 41 eteenpäin. RLS suojaa kyselyn samoin. */
   const loadInventory = async () => {
     try {
-      const { data, error } = await supa.rpc("search_inventory", { query: "" });
+      const { data, error } = await supa
+        .from("collection")
+        .select("stock, last_used_at, paints ( name, range, hex, metallic )")
+        .eq("user_id", userId);
       if (error) throw error;
-      setInventory(data || []);
+      const rows = (data || [])
+        .filter(r => r.paints)
+        .map(r => ({
+          name: r.paints.name, range: r.paints.range, hex: r.paints.hex,
+          metallic: r.paints.metallic, stock: r.stock, last_used_at: r.last_used_at,
+        }))
+        .sort((a, b) => {
+          const w = { empty: 0, low: 1, half: 2, full: 3 };
+          return w[a.stock] - w[b.stock]
+            || a.range.localeCompare(b.range)
+            || a.name.localeCompare(b.name, "fi");
+        });
+      setInventory(rows);
     } catch (e) { console.warn("Varaston haku epäonnistui", e); }
   };
 
