@@ -287,15 +287,72 @@ const AGENT_MAX_ROUNDS = 8;
 /* Vakioreseptit pinnoittain. Nämä ovat sovelluksen omaa tietoa, eivät
    mallin muistia — malli unohtaa yksityiskohdat satunnaisesti, taulukko ei. */
 const RECIPES = {
-  "sininen panssari": ["Pohja: Macragge Blue, kaksi ohutta kerrosta", "Varjostus: Nuln Oil uriin", "Kerros: Calgar Blue paneeleille", "Reunakorostus: Fenrisian Grey terävimmille reunoille"],
-  "punainen panssari": ["Pohja: Mephiston Red", "Varjostus: Agrax Earthshade", "Kerros: Evil Sunz Scarlet", "Reunakorostus: Evil Sunz Scarlet + Ushabti Bone"],
-  "metalli": ["Pohja: Leadbelcher", "Varjostus: Nuln Oil", "Kuivaharjaus: Runefang Steel"],
-  "kulta": ["Pohja: Retributor Armour", "Varjostus: Agrax Earthshade", "Kerros: Retributor Armour ylöspäin osoittaville pinnoille"],
-  "iho": ["Pohja: Bugman's Glow", "Varjostus: Agrax Earthshade", "Kerros: Cadian Fleshtone", "Korostus: Kislev Flesh nenälle ja poskipäille"],
-  "örkin iho": ["Pohja: Waaagh! Flesh", "Varjostus: Agrax Earthshade", "Kerros: Warboss Green"],
-  "kangas": ["Pohja: Steel Legion Drab", "Varjostus: Agrax Earthshade", "Kerros: Steel Legion Drab + Ushabti Bone"],
-  "luu": ["Pohja: Rakarth Flesh", "Varjostus: Agrax Earthshade", "Kerros: Ushabti Bone"],
-  "jalusta": ["Tekstuuri: Astrogranite tasaisesti", "Kuivaharjaus: Runefang Steel kiville", "Reuna: Steel Legion Drab jalustan reunaan"],
+  "sininen panssari": [
+    "Pohja: Macragge Blue — kaksi ohutta kerrosta, anna kuivua välissä",
+    "Varjostus: Drakenhof Nightshade tai Nuln Oil — ohjaa siveltimellä vain uriin",
+    "Korostus: Calgar Blue — jätä varjot näkyviin, älä peitä koko pintaa",
+    "Reunakorostus: Fenrisian Grey — kevyt veto sivellinkärjellä terävimmille reunoille",
+  ],
+  "punainen panssari": [
+    "Pohja: Mephiston Red — punainen peittää huonosti, varaa kaksi kerrosta",
+    "Varjostus: Agrax Earthshade — lämmittää, Nuln Oil harmaannuttaisi",
+    "Korostus: Evil Sunz Scarlet — paneelien keskelle",
+    "Reunakorostus: Wild Rider Red tai seos Ushabti Bonen kanssa",
+  ],
+  "metalli": [
+    "Pohja: Leadbelcher — metallipigmentti asettuu paremmin tasaisella vedolla",
+    "Varjostus: Nuln Oil — reilusti, metalli kestää vahvan varjostuksen",
+    "Korostus: Runefang Steel — kuivaharjaus tai reunaveto",
+    "Reunakorostus: Stormhost Silver tai White Scar — vain kirkkaimmille kohdille",
+  ],
+  "kulta": [
+    "Pohja: Retributor Armour — ohuena, muuten pigmentti kasautuu",
+    "Varjostus: Agrax Earthshade — tuo syvyyden koristeisiin",
+    "Korostus: Liberator Gold tai Gehenna's Gold ylöspäin osoittaville pinnoille",
+    "Reunakorostus: Auric Armour Gold tai Runefang Steel — säästeliäästi",
+  ],
+  "iho": [
+    "Pohja: Bugman's Glow",
+    "Varjostus: Reikland Fleshshade — koko pinnalle, ei vain uriin",
+    "Korostus: Cadian Fleshtone — otsa, nenä, poskipäät",
+    "Reunakorostus: Kislev Flesh — pienet valokohdat, älä liikaa",
+  ],
+  "örkin iho": [
+    "Pohja: Waaagh! Flesh",
+    "Varjostus: Biel-Tan Green tai Agrax Earthshade likaisempaan sävyyn",
+    "Korostus: Warboss Green",
+    "Reunakorostus: Skarsnik Green — lihasten ja rypyn huipuille",
+  ],
+  "kangas": [
+    "Pohja: Steel Legion Drab",
+    "Varjostus: Agrax Earthshade — laskoksiin",
+    "Korostus: Karak Stone — poimujen huipuille",
+    "Reunakorostus: Ushabti Bone — hyvin ohuena",
+  ],
+  "nahka": [
+    "Pohja: Rhinox Hide",
+    "Varjostus: Agrax Earthshade",
+    "Korostus: Mournfang Brown",
+    "Reunakorostus: Skrag Brown — hihnojen reunoihin",
+  ],
+  "luu": [
+    "Pohja: Rakarth Flesh",
+    "Varjostus: Agrax Earthshade — halkeamiin ja saumoihin",
+    "Korostus: Ushabti Bone",
+    "Reunakorostus: Screaming Skull tai White Scar — kärkiin",
+  ],
+  "musta panssari": [
+    "Pohja: Abaddon Black",
+    "Varjostus: Nuln Oil — vain jos pinta on epätasainen",
+    "Korostus: Eshin Grey — leveä reunaveto",
+    "Reunakorostus: Dawnstone — ohut viiva terävimmille reunoille",
+  ],
+  "jalusta": [
+    "Tekstuuri: Astrogranite tasaisesti, vältä miniatyyrin jalkoja",
+    "Varjostus: Agrax Earthshade kivien väliin",
+    "Kuivaharjaus: Runefang Steel tai Longbeard Grey kevyesti",
+    "Reuna: Steel Legion Drab jalustan reunaan, siisti viiva",
+  ],
 };
 
 const AGENT_TOOLS = [
@@ -312,6 +369,13 @@ const AGENT_TOOLS = [
     input_schema: { type: "object", properties: {
       surface: { type: "string", description: "Pinnan nimi." },
     }, required: ["surface"] },
+  },
+  {
+    name: "suggest_partners",
+    description: "Antaa yhdelle pohjavärille sopivan varjostuksen, ensimmäisen korostuksen ja reunakorostuksen — VAIN käyttäjän omasta varastosta, väriarvojen perusteella laskettuna. Käytä tätä jokaiselle pinnalle, jotta jokainen vaihe saa oikean sävyn. Älä arvaa sävypareja itse.",
+    input_schema: { type: "object", properties: {
+      paint: { type: "string", description: "Pohjavärin tarkka nimi, esim. 'Macragge Blue'." },
+    }, required: ["paint"] },
   },
   {
     name: "plan_sessions",
@@ -366,8 +430,16 @@ const AGENT_SYSTEM = `Olet Warhammer-maalausavustaja. Suunnittelet miniatyyrier�
 Toimi näin:
 1. Kutsu search_inventory nähdäksesi mitä maaleja on. Huomioi vähissä olevat.
 2. Kutsu get_recipe jokaiselle pinnalle jonka käyttäjä mainitsee.
-3. Kutsu plan_sessions jakaaksesi työn maalausiltoihin.
-4. Kutsu save_plan lopuksi.
+3. Kutsu suggest_partners jokaiselle pohjavärille. Se antaa varjostuksen,
+   korostuksen ja reunakorostuksen käyttäjän omasta varastosta. ÄLÄ arvaa
+   sävypareja itse — funktio laskee ne väriarvoista.
+4. Kutsu plan_sessions jakaaksesi työn maalausiltoihin.
+5. Kutsu save_plan lopuksi.
+
+Jokaisen pinnan pitää saada TÄYSI ketju, ei yhtä väriä:
+  Pohja → Varjostus → Korostus → Reunakorostus
+Kirjoita jokaiseen vaiheeseen myös lyhyt tekninen ohje tip-kenttään
+(esim. "kaksi ohutta kerrosta", "vain uriin", "kevyt veto reunalle").
 
 TÄRKEÄÄ AJASTA: älä koskaan mainitse minuutteja, tunteja, kokonaisaikaa tai määräaikoja käyttäjälle näkyvässä tekstissä. Istuntojako riittää ("Ilta 1", "Ilta 2"). Aika on vain sisäinen apuväline istuntojen jakamiseen.
 
@@ -1273,6 +1345,14 @@ function Tracker({ session, online, onSignOut }) {
       const hit = RECIPES[key] || RECIPES[Object.keys(RECIPES).find(k => k.includes(key) || key.includes(k)) || ""];
       return hit ? { surface: key, steps: hit }
                  : { error: `Tuntematon pinta. Kelvolliset: ${Object.keys(RECIPES).join(", ")}` };
+    },
+    suggest_partners: async ({ paint }) => {
+      const { data, error } = await supa.rpc("suggest_partners", { paint: paint || "" });
+      if (error) return { error: error.message };
+      if (!data?.length) return { note: `Varastosta ei löytynyt sopivia sävypareja värille "${paint}". Käytä lähintä omistamaasi vaihtoehtoa.` };
+      const by = { shade: [], layer: [], edge: [] };
+      data.forEach(r => by[r.role]?.push({ name: r.name, range: r.range, stock: r.stock }));
+      return { base: paint, shade: by.shade, layer: by.layer, edge: by.edge };
     },
     plan_sessions: async (input) => planSessions(input),
   };
