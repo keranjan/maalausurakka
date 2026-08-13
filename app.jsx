@@ -531,14 +531,14 @@ const RECIPES = {
   ],
   "leather": [
     "Base: Rhinox Hide",
-    "Varjostus: Agrax Earthshade",
+    "Shade: Agrax Earthshade",
     "Highlight: Mournfang Brown",
     "Edge: Skrag Brown - along strap edges",
   ],
   "bone": [
     "Base: Rakarth Flesh",
     "Shade: Agrax Earthshade - into cracks and seams",
-    "Korostus: Ushabti Bone",
+    "Highlight: Ushabti Bone",
     "Edge: Screaming Skull or White Scar - on the tips",
   ],
   "black armour": [
@@ -824,7 +824,7 @@ function AuthScreen() {
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "var(--body)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div className="rise" style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ textAlign: "center", marginBottom: 22 }}>
-          <div style={{ fontFamily: "var(--display)", fontSize: 12, letterSpacing: "0.35em", color: "var(--gold-dim)", textTransform: "uppercase" }}>Maalausurakka</div>
+          <div style={{ fontFamily: "var(--display)", fontSize: 12, letterSpacing: "0.35em", color: "var(--gold-dim)", textTransform: "uppercase" }}>Paintlog</div>
           <h1 style={{ fontFamily: "var(--display)", fontSize: 26, fontWeight: 700, color: "var(--text)", margin: "4px 0 0" }}>
             {mode === "in" ? "Sign in" : "Create profile"}
           </h1>
@@ -1073,7 +1073,7 @@ function Heatmap({ byDay }) {
       const n = byDay.get(dayKey(date)) || 0;
       cells.push(
         <div key={d} className="hm-cell"
-          title={future ? "" : `${fmtDate(date)} — ${n} ${n === 1 ? "askel" : "askelta"}`}
+          title={future ? "" : `${fmtDate(date)} — ${n} ${n === 1 ? "step" : "steps"}`}
           style={{
             width: 15, height: 15,
             background: future ? "transparent" : shade(n),
@@ -1185,7 +1185,7 @@ function Tracker({ session, online, onSignOut }) {
         }
         setSyncState("synced");
       } catch (e) {
-        console.error("Lataus epäonnistui", e);
+        console.error("Load failed", e);
         setSyncState("error");
       }
       skipSave.current = true;
@@ -1239,7 +1239,7 @@ function Tracker({ session, online, onSignOut }) {
         if (error) throw error;
         setSyncState("synced");
       } catch (e) {
-        console.error("Tallennus epäonnistui", e);
+        console.error("Save failed", e);
         setSyncState("error");
       }
     }, 800);
@@ -1283,7 +1283,7 @@ function Tracker({ session, online, onSignOut }) {
         { onConflict: "endpoint" }
       );
     } catch (e) {
-      console.warn("Push-tilaus epäonnistui", e);
+      console.warn("Push subscription failed", e);
     }
   };
 
@@ -1536,7 +1536,7 @@ function Tracker({ session, online, onSignOut }) {
             || a.name.localeCompare(b.name, "fi");
         });
       setInventory(rows);
-    } catch (e) { console.warn("Varaston haku epäonnistui", e); }
+    } catch (e) { console.warn("Failed to load paint collection", e); }
   };
 
   const loadPlans = async () => {
@@ -1546,7 +1546,7 @@ function Tracker({ session, online, onSignOut }) {
         .eq("user_id", userId).eq("is_current", true);
       if (error) throw error;
       setPlans(Object.fromEntries((data || []).map(p => [p.unit_id, p])));
-    } catch (e) { console.warn("Suunnitelmien haku epäonnistui", e); }
+    } catch (e) { console.warn("Failed to load plans", e); }
   };
 
   useEffect(() => {
@@ -1648,7 +1648,7 @@ function Tracker({ session, online, onSignOut }) {
         { onConflict: "user_id,paint_id" });
       setInvQuery(""); setCatalogue([]);
       loadInventory();
-    } catch (e) { console.warn("Maalin lisäys epäonnistui", e); }
+    } catch (e) { console.warn("Failed to add paint", e); }
   };
 
   /* Neliportainen tila, koska purkkia katsomalla pystyy arvioimaan
@@ -1725,7 +1725,7 @@ function Tracker({ session, online, onSignOut }) {
       .replace(/{name}/g, profileName || "warrior")
       .replace(/{grey}/g, safeNum(grey))
       .replace(/{streak}/g, safeNum(momentum.best, safeNum(gap, 1)))
-      .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "urakka");
+      .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "your backlog");
 
     const title = fill(msg.who);
     const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-reminder", lang: "en" };
@@ -1794,7 +1794,7 @@ function Tracker({ session, online, onSignOut }) {
         if (r.found && Array.isArray(r.units) && r.units.length) {
           got.push({
             product: m.product, system: m.system, faction: m.faction,
-            units: r.units.map(u => ({ id: uid(), name: u.name || "Miniatyyri", count: clampCount(u.count) })),
+            units: r.units.map(u => ({ id: uid(), name: u.name || "Miniature", count: clampCount(u.count) })),
           });
         } else bad.push(m.product);
       } catch (e) {
@@ -1945,7 +1945,7 @@ function Tracker({ session, online, onSignOut }) {
       const add = {};
       (data || []).forEach(d => { if (d.signedUrl && !d.error) add[d.path] = d.signedUrl; });
       if (Object.keys(add).length) setPhotoUrls(prev => ({ ...prev, ...add }));
-    } catch (e) { console.warn("Kuvien osoitteiden haku epäonnistui", e); }
+    } catch (e) { console.warn("Failed to fetch photo URLs", e); }
   };
 
   const addPhoto = async (pid, unitId, file) => {
@@ -2052,7 +2052,7 @@ function Tracker({ session, online, onSignOut }) {
     }));
     setLightbox(null);
     try { await supa.storage.from(PHOTO_BUCKET).remove([path]); }
-    catch (e) { console.warn("Kuvan poisto tallennustilasta epäonnistui", e); }
+    catch (e) { console.warn("Failed to delete photo from storage", e); }
   };
 
   /* ---- yksikön muokkaus ---- */
@@ -2135,7 +2135,7 @@ function Tracker({ session, online, onSignOut }) {
           background: "linear-gradient(180deg, #7A6224, #4D3D18)",
           border: "1px solid var(--gold)", padding: "11px 18px",
           color: "var(--gold)", fontWeight: 600, textAlign: "center",
-        }}>🏆 {celebrate} — kokonaan valmis!</div>
+        }}>🏆 {celebrate} — fully finished!</div>
       )}
 
       {popup && popup.length > 0 && (
@@ -2148,7 +2148,7 @@ function Tracker({ session, online, onSignOut }) {
           <span style={{ fontSize: 22, flexShrink: 0 }}>{popup[0].icon}</span>
           <span style={{ minWidth: 0 }}>
             <span style={{ display: "block", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: TIERS[popup[0].tier].color, opacity: 0.8 }}>
-              Uusi saavutus · {TIERS[popup[0].tier].name}
+              New achievement · {TIERS[popup[0].tier].name}
             </span>
             <span style={{ display: "block", fontWeight: 700, color: "var(--text)", fontSize: 14 }}>
               {popup[0].name}
@@ -2209,7 +2209,7 @@ function Tracker({ session, online, onSignOut }) {
                 <div style={{ fontSize: 12, color: "var(--text-3)" }}>{agentUnit.product}</div>
               </div>
               {!agentBusy && (
-                <button onClick={() => setAgentUnit(null)} aria-label="Sulje"
+                <button onClick={() => setAgentUnit(null)} aria-label="Close"
                   style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
               )}
             </div>
@@ -2243,7 +2243,7 @@ function Tracker({ session, online, onSignOut }) {
                     {ev.kind === "tool" && (
                       <span style={{ color: "var(--gold-dim)" }}>
                         ⚙ {ev.name}
-                        {ev.input?.query !== undefined && ` · "${ev.input.query || "kaikki"}"`}
+                        {ev.input?.query !== undefined && ` · "${ev.input.query || "everything"}"`}
                         {ev.input?.surface && ` · ${ev.input.surface}`}
                       </span>
                     )}
@@ -3143,7 +3143,7 @@ function Tracker({ session, online, onSignOut }) {
                                         ) : (
                                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
                                             <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-                                              {u.name} <span style={{ color: "var(--text-3)", fontWeight: 400 }}>({uDone}/{u.minis.length} valmis)</span>
+                                              {u.name} <span style={{ color: "var(--text-3)", fontWeight: 400 }}>({uDone}/{u.minis.length} done)</span>
                                             </span>
                                             <button onClick={() => setAllInUnit(p.id, u.id)}
                                               style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r1)", padding: "4px 8px", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
@@ -3416,7 +3416,7 @@ function Tracker({ session, online, onSignOut }) {
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Chevron open={achOpen} />
                 <span style={{ fontFamily: "var(--display)", fontSize: 16, color: "var(--gold-mid)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  Saavutukset
+                  Achievements
                 </span>
               </span>
               <span style={{ fontSize: 13, color: "var(--text-2)" }}>{earnedCount} / {ACHIEVEMENTS.length}</span>
@@ -3548,7 +3548,7 @@ function App() {
           if (sw.state === "installed" && navigator.serviceWorker.controller) setSwUpdate(sw);
         });
       });
-    }).catch(e => console.warn("Service workerin rekisteröinti epäonnistui", e));
+    }).catch(e => console.warn("Service worker registration failed", e));
   }, []);
 
   useEffect(() => {
