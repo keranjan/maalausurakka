@@ -228,12 +228,27 @@ Arvioi mihin vaiheeseen kuvan miniatyyrit ovat edenneet. Vaihtoehdot:
 ÄLÄ koskaan vastaa "valmis". Reunakorostukset ja jalustan viimeistely eivät
 erotu kuvasta luotettavasti, joten valmiiksi merkitseminen jää käyttäjälle.
 
-Jos et pysty päättelemään vaihetta, käytä "epavarma".
+ÄLÄ ARVAA jos et ole varma. Nämä kolme tapausta ovat aidosti vaikeita
+kuvasta, ja niissä on parempi kysyä kuin arvata:
+- harmaa pohjamaali harmaan muovin päällä (ero on vain kiillossa: paljas
+  muovi kiiltää ja siinä näkyy muottisaumoja, primer on täysin matta)
+- musta pohjamaali mustan muovin päällä
+- luunvalkoinen pohjamaali, joka voi näyttää maalaukselta
+
+Jos epäröit kahden vaiheen välillä, palauta ne molemmat kentässä
+"uncertain_between" ja muotoile kysymys, johon käyttäjä voi vastata
+katsomalla miniatyyriä kädessään. Älä silloin täytä "stage"-kenttää.
+
 Älä arvaa miniatyyrien lukumäärää tarkasti — arvioi vain karkeasti montako
 kuvassa näkyy, käyttäjä korjaa luvun.
 
-Vastaa VAIN JSON-objektina, ei muuta tekstiä:
-{"stage": "...", "visible": 12, "note": "enintään 12 sanaa suomeksi"}` },
+Vastaa VAIN JSON-objektina, ei muuta tekstiä. Jompikumpi muoto:
+
+Varma:
+{"stage": "pohjamaalattu", "visible": 12, "note": "enintään 12 sanaa suomeksi"}
+
+Epävarma kahden välillä:
+{"uncertain_between": ["kasattu", "pohjamaalattu"], "question": "Onko näissä pohjamaali? Paljas muovi kiiltää, primer on matta.", "visible": 12}` },
       ]}],
     }),
   });
@@ -1856,8 +1871,15 @@ function Tracker({ session, online, onSignOut }) {
       const r = await recognizeStage({
         apiKey, base64, unit: u.name, count: u.minis.length, currentStages: u.minis,
       });
+      /* Epävarmuus kahden vaiheen välillä: kysytään käyttäjältä sen sijaan
+         että arvattaisiin. Harmaa primer harmaan muovin päällä on
+         käytännössä mahdoton erottaa kuvasta — ero on vain kiillossa. */
+      const between = (r.uncertain_between || [])
+        .map(x => STAGE_BY_NAME[String(x).toLowerCase()])
+        .filter(Boolean);
       const stage = STAGE_BY_NAME[String(r.stage || "").toLowerCase()];
-      if (!stage) {
+
+      if (!stage && between.length < 2) {
         setRecogErr("Vaihetta ei saatu selville kuvasta. Merkitse käsin tai kokeile toista kuvaa.");
         setRecogBusy(null);
         return;
@@ -1865,11 +1887,14 @@ function Tracker({ session, online, onSignOut }) {
       /* Esitäyttö: kaikki minit jotka ovat vielä tätä vaihetta aiemmin.
          Maalausillassa tehdään harvoin 19/20 — tavallisempaa on koko erä.
          Mallin oma arvio ei koskaan ylitä yksikön kokoa. */
-      const behind = u.minis.filter(x => x < stage).length;
+      const ref = stage || Math.max(...between);
+      const behind = u.minis.filter(x => x < ref).length;
       const guess = Math.min(u.minis.length, Math.max(1, parseInt(r.visible) || behind || u.minis.length));
       setRecog({
         pid: p.id, uid: u.id, unit: u.name, product: p.name,
-        stage, count: behind > 0 ? behind : guess, total: u.minis.length,
+        stage: stage || null,
+        ask: stage ? null : { options: [...new Set(between)].sort(), question: r.question || "Kumpi näistä on lähempänä?" },
+        count: behind > 0 ? behind : guess, total: u.minis.length,
         behind, note: r.note || "", file,
         overflow: (parseInt(r.visible) || 0) > u.minis.length,
       });
@@ -2150,8 +2175,9 @@ function Tracker({ session, online, onSignOut }) {
         const prod = products.find(x => x.id === recog.pid);
         const unit = prod?.units.find(x => x.id === recog.uid);
         if (!unit) return null;
-        const st = STAGES[recog.stage];
-        const max = unit.minis.filter(x => x < recog.stage).length;
+        const st = recog.stage != null ? STAGES[recog.stage] : null;
+        const max = recog.stage != null
+          ? unit.minis.filter(x => x < recog.stage).length : 0;
         return (
           <div style={{
             position: "fixed", inset: 0, zIndex: 76, background: "rgba(6,6,8,.9)",
@@ -2167,7 +2193,43 @@ function Tracker({ session, online, onSignOut }) {
               </div>
               <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>{recog.product}</div>
 
+              {/* --- epävarma: kysytään sen sijaan että arvattaisiin --- */}
+              {recog.ask && (
+                <div style={{
+                  background: "var(--bg)", border: "1px solid var(--warn)",
+                  borderRadius: "var(--r2)", padding: "12px 13px",
+                }}>
+                  <div className="eyebrow" style={{ color: "var(--warn)", marginBottom: 6 }}>
+                    Tarkistus tarpeen
+                  </div>
+                  <p style={{ fontSize: 13.5, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.5 }}>
+                    {recog.ask.question}
+                  </p>
+                  <p className="hint" style={{ margin: "0 0 12px" }}>
+                    Katso miniatyyriä kädessäsi — kuvasta tätä ei voi päätellä luotettavasti.
+                  </p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {recog.ask.options.map(opt => (
+                      <button key={opt}
+                        className="btn btn-quiet"
+                        style={{ flex: "1 1 130px", borderColor: STAGES[opt].color, color: STAGES[opt].color }}
+                        onClick={() => setRecog(r => {
+                          const behind = unit.minis.filter(x => x < opt).length;
+                          return { ...r, stage: opt, ask: null, count: Math.max(1, Math.min(behind || 1, r.count)) };
+                        })}>
+                        {STAGES[opt].name}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="btn-ghost" style={{ marginTop: 10 }}
+                    onClick={() => setRecog(null)}>
+                    Peru — merkitsen käsin
+                  </button>
+                </div>
+              )}
+
               {/* tunnistettu vaihe */}
+              {recog.stage != null && (<>
               <div style={{
                 display: "flex", alignItems: "center", gap: 9, padding: "10px 12px",
                 background: "var(--bg)", border: `1px solid ${st.color}`,
@@ -2246,6 +2308,7 @@ function Tracker({ session, online, onSignOut }) {
                 </button>
                 <button className="btn btn-quiet" onClick={() => setRecog(null)}>Peru</button>
               </div>
+              </>)}
             </div>
           </div>
         );
