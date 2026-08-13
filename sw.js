@@ -8,7 +8,7 @@
  * Kun muutat index.html:ää, nosta CACHE-versiota. Muuten selain voi tarjoilla
  * vanhaa runkoa vielä pitkään.
  */
-const CACHE = "maalausurakka-v15";
+const CACHE = "paintlog-v16";
 
 /* sovelluksen runko */
 const SHELL = [
@@ -59,7 +59,7 @@ self.addEventListener("push", (e) => {
     icon: "icon-192.png",
     badge: "icon-192.png",
     tag: d.tag || "maalausurakka-reminder",
-    lang: "fi",
+    lang: "en",
     renotify: true,
   };
   e.waitUntil(self.registration.showNotification(title, opts));

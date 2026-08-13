@@ -34,17 +34,17 @@ const MAX_SEARCHES = 2;
 const VAPID_PUBLIC_KEY = "BGj0o9zfUS6MirJfp4y-lOwM-IAekSK4y2SfebJ6XoHX-oHZLHmZ30LKa17PovTdqUDICZqzUE5P9v_AyILROko";
 
 const STAGES = [
-  { key: 0, name: "To-do",             short: "TD", color: "var(--s0)", bg: "var(--s0-bg)", desc: "Harmaata muovia",   verb: "kasausta",             w: 6 },
-  { key: 1, name: "Kasattu",           short: "KA", color: "var(--s1)", bg: "var(--s1-bg)", desc: "Kasattu, ei maalia", verb: "pohjamaalia",          w: 2 },
-  { key: 2, name: "Pohjamaalattu",     short: "PM", color: "var(--s2)", bg: "var(--s2-bg)", desc: "Primeri päällä",     verb: "maalauksen aloitusta", w: 10 },
-  { key: 3, name: "Maalaus aloitettu", short: "MA", color: "var(--s3)", bg: "var(--s3-bg)", desc: "Työn alla",          verb: "viimeistelyä",         w: 15 },
-  { key: 4, name: "Valmis",            short: "OK", color: "var(--gold)", bg: "var(--gold-deep)", desc: "Maalattu ja valmis!", verb: null,                  w: 0 },
+  { key: 0, name: "To do",             short: "TD", color: "var(--s0)", bg: "var(--s0-bg)", desc: "Bare grey plastic",   verb: "assembly",       w: 6 },
+  { key: 1, name: "Assembled",           short: "KA", color: "var(--s1)", bg: "var(--s1-bg)", desc: "Built, no paint yet", verb: "priming",        w: 2 },
+  { key: 2, name: "Primed",     short: "PM", color: "var(--s2)", bg: "var(--s2-bg)", desc: "Primer applied",     verb: "base coats",     w: 10 },
+  { key: 3, name: "Painting started", short: "MA", color: "var(--s3)", bg: "var(--s3-bg)", desc: "Work in progress",          verb: "finishing",      w: 15 },
+  { key: 4, name: "Finished",            short: "OK", color: "var(--gold)", bg: "var(--gold-deep)", desc: "Painted and done!", verb: null,                  w: 0 },
 ];
 
 const SYSTEMS = [
   "Warhammer 40,000", "Warhammer: Age of Sigmar", "Warhammer: The Old World",
   "Horus Heresy", "Kill Team", "Warcry", "Warhammer Underworlds",
-  "Necromunda", "Blood Bowl", "Legions Imperialis", "Middle-earth", "Muu",
+  "Necromunda", "Blood Bowl", "Legions Imperialis", "Middle-earth", "Other",
 ];
 
 /* ============================================================
@@ -56,96 +56,96 @@ const SYSTEMS = [
    päiväennätys, paluu tauolta) tulevat lokista.
    ============================================================ */
 const TIERS = {
-  common: { name: "Tavallinen",  color: "var(--s0)", bg: "var(--surface-3)" },
-  rare:   { name: "Harvinainen", color: "var(--s1)", bg: "var(--s1-bg)" },
-  epic:   { name: "Eeppinen",    color: "#B98AD6", bg: "#2C2038" },
-  legend: { name: "Legenda",     color: "var(--gold)", bg: "var(--s4-bg)" },
+  common: { name: "Common",  color: "var(--s0)", bg: "var(--surface-3)" },
+  rare:   { name: "Rare", color: "var(--s1)", bg: "var(--s1-bg)" },
+  epic:   { name: "Epic",    color: "#B98AD6", bg: "#2C2038" },
+  legend: { name: "Legendary",     color: "var(--gold)", bg: "var(--s4-bg)" },
 };
 
 const ACHIEVEMENTS = [
   // --- ensiaskeleet ---
-  { id: "step1",    icon: "👣", tier: "common", name: "Ensimmäinen sivellinveto", desc: "Siirrä yksi mini eteenpäin",            target: 1,   get: m => m.totalSteps },
-  { id: "asm1",     icon: "🔧", tier: "common", name: "Harmaa murtuu",            desc: "Kasaa ensimmäinen mini",                target: 1,   get: m => m.assembled },
-  { id: "prime1",   icon: "🥫", tier: "common", name: "Pohjaa myöten",            desc: "Pohjamaalaa ensimmäinen mini",          target: 1,   get: m => m.primed },
-  { id: "paint1",   icon: "🖌️", tier: "common", name: "Väriä harmauteen",         desc: "Aloita ensimmäisen minin maalaus",      target: 1,   get: m => m.started },
-  { id: "done1",    icon: "⭐", tier: "common", name: "Ensimmäinen valmis",       desc: "Saata yksi mini valmiiksi",             target: 1,   get: m => m.finished },
-  { id: "box1",     icon: "📦", tier: "rare",   name: "Laatikko tyhjä",           desc: "Saata koko tuote valmiiksi",            target: 1,   get: m => m.prodDone },
+  { id: "step1",    icon: "👣", tier: "common", name: "First Brushstroke", desc: "Move one miniature forward",            target: 1,   get: m => m.totalSteps },
+  { id: "asm1",     icon: "🔧", tier: "common", name: "Breaking the Grey",  desc: "Assemble your first miniature",                target: 1,   get: m => m.assembled },
+  { id: "prime1",   icon: "🥫", tier: "common", name: "Down to Basics",     desc: "Prime your first miniature",          target: 1,   get: m => m.primed },
+  { id: "paint1",   icon: "🖌️", tier: "common", name: "Colour at Last",     desc: "Start painting your first miniature",      target: 1,   get: m => m.started },
+  { id: "done1",    icon: "⭐", tier: "common", name: "First One Done",     desc: "Finish a single miniature",             target: 1,   get: m => m.finished },
+  { id: "box1",     icon: "📦", tier: "rare",   name: "Box Emptied",        desc: "Finish an entire product",            target: 1,   get: m => m.prodDone },
 
   // --- valmiita minejä ---
-  { id: "done10",   icon: "🔟", tier: "common", name: "Kymmenen kärki",     desc: "10 miniä valmiina",   target: 10,   get: m => m.finished },
-  { id: "done25",   icon: "🛡️", tier: "rare",   name: "Partio",             desc: "25 miniä valmiina",   target: 25,   get: m => m.finished },
-  { id: "done50",   icon: "⚔️", tier: "rare",   name: "Puolensadan mies",   desc: "50 miniä valmiina",   target: 50,   get: m => m.finished },
-  { id: "done100",  icon: "🏰", tier: "epic",   name: "Sadan armeija",      desc: "100 miniä valmiina",  target: 100,  get: m => m.finished },
-  { id: "done250",  icon: "👑", tier: "epic",   name: "Ruhtinaskunta",      desc: "250 miniä valmiina",  target: 250,  get: m => m.finished },
-  { id: "done500",  icon: "🌟", tier: "legend", name: "Legioona",           desc: "500 miniä valmiina",  target: 500,  get: m => m.finished },
-  { id: "done1000", icon: "🔱", tier: "legend", name: "Tuhannen ylivoima",  desc: "1000 miniä valmiina", target: 1000, get: m => m.finished },
+  { id: "done10",   icon: "🔟", tier: "common", name: "Ten Strong",        desc: "10 miniatures finished",   target: 10,   get: m => m.finished },
+  { id: "done25",   icon: "🛡️", tier: "rare",   name: "Patrol",            desc: "25 miniatures finished",   target: 25,   get: m => m.finished },
+  { id: "done50",   icon: "⚔️", tier: "rare",   name: "Half a Hundred",    desc: "50 miniatures finished",   target: 50,   get: m => m.finished },
+  { id: "done100",  icon: "🏰", tier: "epic",   name: "Centurion",         desc: "100 miniatures finished",  target: 100,  get: m => m.finished },
+  { id: "done250",  icon: "👑", tier: "epic",   name: "Principality",      desc: "250 miniatures finished",  target: 250,  get: m => m.finished },
+  { id: "done500",  icon: "🌟", tier: "legend", name: "Legion",            desc: "500 miniatures finished",  target: 500,  get: m => m.finished },
+  { id: "done1000", icon: "🔱", tier: "legend", name: "Thousandfold",      desc: "1000 miniatures finished", target: 1000, get: m => m.finished },
 
   // --- kasaus ---
-  { id: "asm25",  icon: "🪛", tier: "common", name: "Liimasormet",   desc: "25 miniä kasattu",  target: 25,  get: m => m.assembled },
-  { id: "asm100", icon: "🧰", tier: "rare",   name: "Kokoonpanija",  desc: "100 miniä kasattu", target: 100, get: m => m.assembled },
-  { id: "asm250", icon: "🏭", tier: "epic",   name: "Tehdas",        desc: "250 miniä kasattu", target: 250, get: m => m.assembled },
+  { id: "asm25",  icon: "🪛", tier: "common", name: "Glue Fingers",  desc: "25 miniatures assembled",  target: 25,  get: m => m.assembled },
+  { id: "asm100", icon: "🧰", tier: "rare",   name: "Assembler",     desc: "100 miniatures assembled", target: 100, get: m => m.assembled },
+  { id: "asm250", icon: "🏭", tier: "epic",   name: "Manufactorum", desc: "250 miniatures assembled", target: 250, get: m => m.assembled },
 
   // --- pohjamaali ---
-  { id: "prime25",  icon: "💨", tier: "common", name: "Suihkupullo",    desc: "25 miniä pohjamaalattu",  target: 25,  get: m => m.primed },
-  { id: "prime100", icon: "☁️", tier: "rare",   name: "Primerin herra", desc: "100 miniä pohjamaalattu", target: 100, get: m => m.primed },
-  { id: "prime250", icon: "🌫️", tier: "epic",   name: "Harmaa meri",    desc: "250 miniä pohjamaalattu", target: 250, get: m => m.primed },
+  { id: "prime25",  icon: "💨", tier: "common", name: "Spray Can",      desc: "25 miniatures primed",  target: 25,  get: m => m.primed },
+  { id: "prime100", icon: "☁️", tier: "rare",   name: "Lord of Primer", desc: "100 miniatures primed", target: 100, get: m => m.primed },
+  { id: "prime250", icon: "🌫️", tier: "epic",   name: "Sea of Grey",    desc: "250 miniatures primed", target: 250, get: m => m.primed },
 
   // --- maalaus aloitettu ---
-  { id: "paint50",  icon: "🎨", tier: "rare", name: "Paletti auki",  desc: "50 minin maalaus aloitettu",  target: 50,  get: m => m.started },
-  { id: "paint200", icon: "🖼️", tier: "epic", name: "Värien mestari", desc: "200 minin maalaus aloitettu", target: 200, get: m => m.started },
+  { id: "paint50",  icon: "🎨", tier: "rare", name: "Palette Open",  desc: "50 miniatures started",  target: 50,  get: m => m.started },
+  { id: "paint200", icon: "🖼️", tier: "epic", name: "Master of Hues", desc: "200 miniatures started", target: 200, get: m => m.started },
 
   // --- putki ---
-  { id: "streak3",   icon: "🔥", tier: "common", name: "Alku on tehty",  desc: "3 päivän putki",   target: 3,   get: m => m.bestStreak },
-  { id: "streak7",   icon: "📅", tier: "rare",   name: "Viikko putkeen", desc: "7 päivän putki",   target: 7,   get: m => m.bestStreak },
-  { id: "streak14",  icon: "🗓️", tier: "rare",   name: "Kaksi viikkoa",  desc: "14 päivän putki",  target: 14,  get: m => m.bestStreak },
-  { id: "streak30",  icon: "🌙", tier: "epic",   name: "Kuukausi",       desc: "30 päivän putki",  target: 30,  get: m => m.bestStreak },
-  { id: "streak60",  icon: "💎", tier: "epic",   name: "Kaksi kuuta",    desc: "60 päivän putki",  target: 60,  get: m => m.bestStreak },
-  { id: "streak100", icon: "🏆", tier: "legend", name: "Sata päivää",    desc: "100 päivän putki", target: 100, get: m => m.bestStreak },
+  { id: "streak3",   icon: "🔥", tier: "common", name: "Getting Going",  desc: "3 day streak",   target: 3,   get: m => m.bestStreak },
+  { id: "streak7",   icon: "📅", tier: "rare",   name: "A Full Week",    desc: "7 day streak",   target: 7,   get: m => m.bestStreak },
+  { id: "streak14",  icon: "🗓️", tier: "rare",   name: "Fortnight",      desc: "14 day streak",  target: 14,  get: m => m.bestStreak },
+  { id: "streak30",  icon: "🌙", tier: "epic",   name: "A Month",        desc: "30 day streak",  target: 30,  get: m => m.bestStreak },
+  { id: "streak60",  icon: "💎", tier: "epic",   name: "Two Moons",      desc: "60 day streak",  target: 60,  get: m => m.bestStreak },
+  { id: "streak100", icon: "🏆", tier: "legend", name: "Hundred Days",   desc: "100 day streak", target: 100, get: m => m.bestStreak },
 
   // --- päiväennätykset ---
-  { id: "day10", icon: "💪", tier: "common", name: "Uurastaja",   desc: "10 askelta yhtenä päivänä", target: 10, get: m => m.maxDay },
-  { id: "day25", icon: "🚀", tier: "rare",   name: "Urakkapäivä", desc: "25 askelta yhtenä päivänä", target: 25, get: m => m.maxDay },
-  { id: "day50", icon: "⚡", tier: "epic",   name: "Maratoni",    desc: "50 askelta yhtenä päivänä", target: 50, get: m => m.maxDay },
+  { id: "day10", icon: "💪", tier: "common", name: "Grinder",     desc: "10 steps in a single day", target: 10, get: m => m.maxDay },
+  { id: "day25", icon: "🚀", tier: "rare",   name: "Big Session", desc: "25 steps in a single day", target: 25, get: m => m.maxDay },
+  { id: "day50", icon: "⚡", tier: "epic",   name: "Marathon",    desc: "50 steps in a single day", target: 50, get: m => m.maxDay },
 
   // --- vuorokaudenaika ---
-  { id: "night1",  icon: "🦉", tier: "common", name: "Yömaalari",       desc: "Sivellinveto klo 23–05",       target: 1,  get: m => m.night },
-  { id: "night25", icon: "🌃", tier: "rare",   name: "Yön ritari",      desc: "25 askelta klo 23–05",         target: 25, get: m => m.night },
-  { id: "early1",  icon: "🐓", tier: "common", name: "Aamuvirkku",      desc: "Sivellinveto klo 05–08",       target: 1,  get: m => m.early },
-  { id: "weekend", icon: "🛋️", tier: "rare",   name: "Viikonloppusoturi", desc: "20 askelta viikonloppuisin", target: 20, get: m => m.weekend },
+  { id: "night1",  icon: "🦉", tier: "common", name: "Night Painter",  desc: "Paint between 11pm and 5am",       target: 1,  get: m => m.night },
+  { id: "night25", icon: "🌃", tier: "rare",   name: "Knight of Night", desc: "25 steps between 11pm and 5am",         target: 25, get: m => m.night },
+  { id: "early1",  icon: "🐓", tier: "common", name: "Early Riser",    desc: "Paint between 5am and 8am",       target: 1,  get: m => m.early },
+  { id: "weekend", icon: "🛋️", tier: "rare",   name: "Weekend Warrior", desc: "20 steps on weekends", target: 20, get: m => m.weekend },
 
   // --- valmiit tuotteet ---
-  { id: "box3",  icon: "📚", tier: "rare",   name: "Kolme kaapista",  desc: "3 tuotetta valmiina",  target: 3,  get: m => m.prodDone },
-  { id: "box10", icon: "🏛️", tier: "epic",   name: "Kymmenen kaatui", desc: "10 tuotetta valmiina", target: 10, get: m => m.prodDone },
-  { id: "box25", icon: "🗿", tier: "legend", name: "Kaapin kuningas", desc: "25 tuotetta valmiina", target: 25, get: m => m.prodDone },
+  { id: "box3",  icon: "📚", tier: "rare",   name: "Three Boxes",   desc: "3 products finished",  target: 3,  get: m => m.prodDone },
+  { id: "box10", icon: "🏛️", tier: "epic",   name: "Ten Down",      desc: "10 products finished", target: 10, get: m => m.prodDone },
+  { id: "box25", icon: "🗿", tier: "legend", name: "King of the Cupboard", desc: "25 products finished", target: 25, get: m => m.prodDone },
 
   // --- armeijat ---
-  { id: "fac1",  icon: "🎌", tier: "epic",   name: "Armeija seisoo",  desc: "Yksi rotu kokonaan valmiina",     target: 1, get: m => m.facDone },
-  { id: "fac3",  icon: "🌍", tier: "legend", name: "Kolme armeijaa",  desc: "3 rotua kokonaan valmiina",       target: 3, get: m => m.facDone },
-  { id: "sys1",  icon: "♟️", tier: "legend", name: "Pelijärjestelmä haltuun", desc: "Yksi pelijärjestelmä kokonaan valmiina", target: 1, get: m => m.sysDone },
+  { id: "fac1",  icon: "🎌", tier: "epic",   name: "An Army Stands", desc: "One faction fully finished",     target: 1, get: m => m.facDone },
+  { id: "fac3",  icon: "🌍", tier: "legend", name: "Three Armies",   desc: "3 factions fully finished",       target: 3, get: m => m.facDone },
+  { id: "sys1",  icon: "♟️", tier: "legend", name: "System Mastered", desc: "One game system fully finished", target: 1, get: m => m.sysDone },
 
   // --- leveys ---
-  { id: "sys2r", icon: "🎲", tier: "common", name: "Kahden pelin mies", desc: "Tuotteita 2 pelijärjestelmässä", target: 2, get: m => m.sysCount },
-  { id: "sys4r", icon: "🎭", tier: "rare",   name: "Monilahjakkuus",    desc: "Tuotteita 4 pelijärjestelmässä", target: 4, get: m => m.sysCount },
-  { id: "fac5r", icon: "🧬", tier: "rare",   name: "Rotujen kirjo",     desc: "Tuotteita 5 eri rodusta",        target: 5, get: m => m.facCount },
+  { id: "sys2r", icon: "🎲", tier: "common", name: "Two Systems",  desc: "Products in 2 game systems", target: 2, get: m => m.sysCount },
+  { id: "sys4r", icon: "🎭", tier: "rare",   name: "Polymath",     desc: "Products in 4 game systems", target: 4, get: m => m.sysCount },
+  { id: "fac5r", icon: "🧬", tier: "rare",   name: "Many Banners", desc: "Products from 5 different factions",        target: 5, get: m => m.facCount },
 
   // --- erikoiset ---
-  { id: "regiment", icon: "🎺", tier: "epic",   name: "Rykmentti",     desc: "20+ minin yksikkö kokonaan valmiina",  target: 1,   get: m => m.bigUnit >= 20 ? 1 : 0 },
-  { id: "horde",    icon: "🐀", tier: "legend", name: "Lauma",         desc: "40+ minin yksikkö kokonaan valmiina",  target: 1,   get: m => m.bigUnit >= 40 ? 1 : 0 },
-  { id: "comeback", icon: "🔄", tier: "rare",   name: "Paluu",         desc: "Jatka urakkaa yli 30 päivän tauon jälkeen", target: 1, get: m => m.maxGap >= 30 ? 1 : 0 },
-  { id: "days50",   icon: "🧭", tier: "epic",   name: "Uskollinen",    desc: "50 aktiivista päivää",                target: 50,  get: m => m.daysActive },
-  { id: "days150",  icon: "🕰️", tier: "legend", name: "Elämäntapa",    desc: "150 aktiivista päivää",               target: 150, get: m => m.daysActive },
-  { id: "photo1",   icon: "📷", tier: "common", name: "Ensimmäinen muotokuva", desc: "Ota kuva valmiista yksiköstä", target: 1,  get: m => m.photos },
-  { id: "photo10",  icon: "🖼️", tier: "rare",   name: "Galleria aukeaa",       desc: "10 kuvaa galleriassa",           target: 10, get: m => m.photos },
-  { id: "photo25",  icon: "🏞️", tier: "epic",   name: "Kuraattori",            desc: "25 kuvaa galleriassa",           target: 25, get: m => m.photos },
-  { id: "nogrey",   icon: "🧹", tier: "legend", name: "Ei enää harmaata", desc: "Yhtään minia ei ole enää to-dossa", target: 1,   get: m => (m.total > 0 && m.perStage[0] === 0) ? 1 : 0 },
-  { id: "alldone",  icon: "🥇", tier: "legend", name: "Urakka valmis",    desc: "Kaikki miniatyyrit valmiina",       target: 1,   get: m => (m.total > 0 && m.finished === m.total) ? 1 : 0 },
+  { id: "regiment", icon: "🎺", tier: "epic",   name: "Regiment",    desc: "A unit of 20+ fully finished",  target: 1,   get: m => m.bigUnit >= 20 ? 1 : 0 },
+  { id: "horde",    icon: "🐀", tier: "legend", name: "Horde",       desc: "A unit of 40+ fully finished",  target: 1,   get: m => m.bigUnit >= 40 ? 1 : 0 },
+  { id: "comeback", icon: "🔄", tier: "rare",   name: "The Return",  desc: "Return after a break of 30+ days", target: 1, get: m => m.maxGap >= 30 ? 1 : 0 },
+  { id: "days50",   icon: "🧭", tier: "epic",   name: "Faithful",    desc: "50 active days",                target: 50,  get: m => m.daysActive },
+  { id: "days150",  icon: "🕰️", tier: "legend", name: "A Way of Life", desc: "150 active days",               target: 150, get: m => m.daysActive },
+  { id: "photo1",   icon: "📷", tier: "common", name: "First Portrait", desc: "Photograph a finished unit", target: 1,  get: m => m.photos },
+  { id: "photo10",  icon: "🖼️", tier: "rare",   name: "Gallery Opens",  desc: "10 photos in the gallery",           target: 10, get: m => m.photos },
+  { id: "photo25",  icon: "🏞️", tier: "epic",   name: "Curator",        desc: "25 photos in the gallery",           target: 25, get: m => m.photos },
+  { id: "nogrey",   icon: "🧹", tier: "legend", name: "No Grey Left",  desc: "Nothing remains in to-do", target: 1,   get: m => (m.total > 0 && m.perStage[0] === 0) ? 1 : 0 },
+  { id: "alldone",  icon: "🥇", tier: "legend", name: "Backlog Beaten", desc: "Every miniature finished",       target: 1,   get: m => (m.total > 0 && m.finished === m.total) ? 1 : 0 },
 ];
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 /* Rotu/armeija on vapaata tekstiä. Ryhmittelyssä "High Elves", "high elves " ja
    "High Elves" ovat sama ryhmä; näytettävä nimi otetaan ensimmäisestä osumasta. */
-const NO_FACTION = "Määrittelemätön";
+const NO_FACTION = "Unassigned";
 const facKey = (f) => (f || "").trim().toLowerCase();
 
 /* Placeholderien turvamuunnin: NaN tai undefined ei saa koskaan päätyä
@@ -179,14 +179,14 @@ async function resizeImage(file, maxDim = PHOTO_MAX_DIM) {
   ctx.drawImage(bmp, 0, 0, w, h);
   bmp.close?.();
   return new Promise((res, rej) =>
-    canvas.toBlob(b => b ? res(b) : rej(new Error("Kuvan pakkaus epäonnistui")),
+    canvas.toBlob(b => b ? res(b) : rej(new Error("Image compression failed")),
       "image/jpeg", PHOTO_QUALITY));
 }
 
 const blobToBase64 = (blob) => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(String(r.result).split(",")[1]);
-  r.onerror = () => rej(new Error("Kuvan luku epäonnistui"));
+  r.onerror = () => rej(new Error("Could not read the image"));
   r.readAsDataURL(blob);
 });
 
@@ -217,38 +217,38 @@ async function recognizeStage({ apiKey, base64, unit, count, currentStages }) {
       max_tokens: 400,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-        { type: "text", text: `Kuvassa on miniatyyrejä yksiköstä "${unit}" (${count} kpl yhteensä).
-Nykyinen kirjattu tila: ${tally}.
+        { type: "text", text: `The photo shows miniatures from the unit "${unit}" (${count} in total).
+Currently recorded state: ${tally}.
 
-Arvioi mihin vaiheeseen kuvan miniatyyrit ovat edenneet. Vaihtoehdot:
-- "kasattu": harmaata tai värillistä muovia, ei maalia
-- "pohjamaalattu": tasainen yksivärinen pohja (musta, harmaa, luunvalkoinen), ei muita värejä
-- "maalaus aloitettu": useampia värejä, mutta työ on kesken
+Judge which stage the miniatures in the photo have reached. Options:
+- "assembled": bare grey or coloured plastic, no paint
+- "primed": an even single-colour undercoat (black, grey, bone), no other colours
+- "painting started": several colours present, but the work is unfinished
 
-ÄLÄ koskaan vastaa "valmis". Reunakorostukset ja jalustan viimeistely eivät
-erotu kuvasta luotettavasti, joten valmiiksi merkitseminen jää käyttäjälle.
+NEVER answer "finished". Edge highlights and base rims cannot be judged
+reliably from a photo, so marking something finished is left to the user.
 
-ÄLÄ ARVAA jos et ole varma. Nämä kolme tapausta ovat aidosti vaikeita
-kuvasta, ja niissä on parempi kysyä kuin arvata:
-- harmaa pohjamaali harmaan muovin päällä (ero on vain kiillossa: paljas
-  muovi kiiltää ja siinä näkyy muottisaumoja, primer on täysin matta)
-- musta pohjamaali mustan muovin päällä
-- luunvalkoinen pohjamaali, joka voi näyttää maalaukselta
+DO NOT GUESS if you are unsure. These three cases are genuinely hard from a
+photo, and it is better to ask than to guess:
+- grey primer over grey plastic (the only difference is sheen: bare plastic
+  is glossy and shows mould lines, primer is completely matt)
+- black primer over black plastic
+- bone-coloured primer, which can look like finished paintwork
 
-Jos epäröit kahden vaiheen välillä, palauta ne molemmat kentässä
-"uncertain_between" ja muotoile kysymys, johon käyttäjä voi vastata
-katsomalla miniatyyriä kädessään. Älä silloin täytä "stage"-kenttää.
+If you hesitate between two stages, return both in "uncertain_between" and
+write a question the user can answer by looking at the miniature in their
+hand. Leave "stage" empty in that case.
 
-Älä arvaa miniatyyrien lukumäärää tarkasti — arvioi vain karkeasti montako
-kuvassa näkyy, käyttäjä korjaa luvun.
+Do not try to count the miniatures precisely — estimate roughly how many are
+visible; the user will correct the number.
 
-Vastaa VAIN JSON-objektina, ei muuta tekstiä. Jompikumpi muoto:
+Reply ONLY with a JSON object, nothing else. One of two shapes:
 
-Varma:
-{"stage": "pohjamaalattu", "visible": 12, "note": "enintään 12 sanaa suomeksi"}
+Confident:
+{"stage": "primed", "visible": 12, "note": "at most 12 words in English"}
 
-Epävarma kahden välillä:
-{"uncertain_between": ["kasattu", "pohjamaalattu"], "question": "Onko näissä pohjamaali? Paljas muovi kiiltää, primer on matta.", "visible": 12}` },
+Uncertain between two:
+{"uncertain_between": ["assembled", "primed"], "question": "Is there primer on these? Bare plastic is glossy, primer is matt.", "visible": 12}` },
       ]}],
     }),
   });
@@ -264,7 +264,7 @@ Epävarma kahden välillä:
 }
 
 const STAGE_BY_NAME = {
-  "kasattu": 1, "pohjamaalattu": 2, "maalaus aloitettu": 3,
+  "assembled": 1, "primed": 2, "painting started": 3,
 };
 
 /* VAPID-avaimen muunnos push-tilausta varten */
@@ -275,49 +275,152 @@ function urlB64ToU8(base64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
-/* ---- muistutusviestit: eri Warhammer-hahmoilta ----
-   who = hahmo (näytetään ilmoituksen otsikkona), b = viesti hänen äänellään.
-   Korit tauon mukaan: lempeä primarkki päivänä 1, kaaosjumala päivänä 5+.
-   {name}=profiili, {grey}=maalaamatta, {next}=seuraava siirto, {streak}=paras putki. */
+/* ---- reminder messages, spoken by Warhammer characters ----
+   who   = character (shown as the notification title)
+   lines = several lines in that character's voice; one is picked at random,
+           so the same character does not repeat itself.
+   Buckets by how long the backlog has been quiet: a kindly primarch on
+   day one, a Chaos god by day five.
+   Placeholders: {name} profile, {grey} unpainted, {next} next move,
+   {streak} best streak. */
 const NOTIFY = {
-  soft: [ // 1 päivä — jalot, kannustavat
-    { who: "The Emperor of Mankind", b: "Kultainen valtaistuin näkee kaiken, {name} — myös {grey} maalaamatonta lastasi. Yksi sivellinveto ilahduttaisi Isää." },
-    { who: "Sanguinius", b: "Älä anna epätoivon voittaa, {name}. Jokainen mini on kaunis loppuun saatettuna. Aloita yhdestä." },
-    { who: "Roboute Guilliman", b: "Olen laatinut sinulle suunnitelman: {next}. Tehokkuus alkaa yhdestä vedosta. Ryhdytään töihin." },
-    { who: "Saint Celestine", b: "Valo palaa yhä sinussa, {name}. Anna sen loistaa {grey} odottavalle sielulle. Tartu siveltimeen." },
-    { who: "Belisarius Cawl", b: "Olen analysoinut kokoelmasi. Optimaalinen seuraava askel: {next}. Kiehtovaa!" },
-    { who: "Ciaphas Cain", b: "Jos minä selvisin hengissä, sinä selviät yhdestä pohjamaalauksesta. {next} odottaa, usko pois." },
-    { who: "Leman Russ", b: "Ei kannata märehtiä, poikaseni. {grey} miniä. Yksi sivellin. Hoida homma." },
-    { who: "Tech-Priest Enginseer", b: "01001101 — Omnissiah suosii ahkeria käsiä. Voitele siveltimesi, {name}. {next} kaipaa huomiota." },
-    { who: "Aun'shi", b: "Suurempi hyvä kutsuu, {name}. Pieni askel kohti valmista armeijaa palvelee kaikkia. Tänään: {next}." },
-    { who: "Lord Castellan Creed", b: "Minä piilotin kokonaisen Baneblade-rykmentin. Sinä et piilota {grey} maalaamatonta miniä. Taktinen isku, nyt." },
-    { who: "Yvraine", b: "Kuolema kuiskaa, mutta väri elää. Herätä {next} henkiin tänään, {name}." },
+  soft: [ // 1 day idle — noble, encouraging
+    { who: "The Emperor of Mankind", lines: [
+      "The Golden Throne sees all, {name} — including your {grey} unpainted sons. One brushstroke would please your Father.",
+      "I have endured ten thousand years upon this throne. You can endure one evening at the desk.",
+      "Your legion waits in silence. Give them colour, and they will give you glory." ] },
+    { who: "Sanguinius", lines: [
+      "Do not let despair take you, {name}. Every miniature is beautiful once finished. Begin with one.",
+      "I have seen my own end and still I fight. Surely you can face {next}.",
+      "There is no shame in a slow evening. There is only shame in never beginning." ] },
+    { who: "Roboute Guilliman", lines: [
+      "I have drawn up a plan for you: {next}. Efficiency begins with a single stroke. Let us proceed.",
+      "A backlog is simply logistics unattended. {grey} models await your schedule.",
+      "Order, {name}. Order and a steady hand. Begin where I have marked." ] },
+    { who: "Saint Celestine", lines: [
+      "The light still burns in you, {name}. Let it fall upon the {grey} that wait in darkness.",
+      "Rise. Take up the brush as you would a blade.",
+      "Each finished model is a small act of faith. Perform one tonight." ] },
+    { who: "Belisarius Cawl", lines: [
+      "I have analysed your collection. Optimal next step: {next}. Fascinating!",
+      "Curious. {grey} units remain in an unfinished state. This inefficiency can be corrected.",
+      "My calculations suggest a 94.7% chance you enjoy this once you begin. Begin." ] },
+    { who: "Ciaphas Cain", lines: [
+      "If I survived that, you can survive one priming session. {next} is waiting, believe me.",
+      "Look, between you and me, the trick is just starting. The rest follows. Usually.",
+      "I've talked my way out of worse than {grey} unpainted models. But you'll have to paint these yourself." ] },
+    { who: "Leman Russ", lines: [
+      "No brooding, pup. {grey} models. One brush. Get it done.",
+      "Less staring at the pile. More painting of the pile.",
+      "A wolf does not fret about the size of the hunt. It hunts." ] },
+    { who: "Tech-Priest Enginseer", lines: [
+      "01001101 — the Omnissiah favours diligent hands. Anoint your brush, {name}.",
+      "Ritual maintenance overdue. {next} requires the sacred unguents.",
+      "The machine spirit of your brush grows restless from disuse." ] },
+    { who: "Aun'shi", lines: [
+      "The Greater Good calls, {name}. A small step toward a finished army serves all.",
+      "Patience is not the same as delay. Tonight: {next}.",
+      "One model, painted well, is worth ten hurried. But it must first be begun." ] },
+    { who: "Lord Castellan Creed", lines: [
+      "I concealed an entire regiment of Baneblades. You cannot conceal {grey} unpainted models. Tactical strike, now.",
+      "Every campaign begins with one order given. Give it.",
+      "They said it couldn't be done. They say that a lot around me." ] },
+    { who: "Yvraine", lines: [
+      "Death whispers, but colour lives. Wake {next} tonight, {name}.",
+      "The dead are patient. Your models need not be.",
+      "Every stroke is a small defiance of ending. Make one." ] },
   ],
-  mid: [ // 2–4 päivää — ankarat, pilkalliset
-    { who: "Roboute Guilliman", b: "Kaksi päivää ilman edistystä. Tämä tehottomuus olisi raivostuttanut veljeni. {grey} miniä odottaa, {name}." },
-    { who: "Commissar Yarrick", b: "Perääntyminen ei ole vaihtoehto. {grey} sotilasta seisoo harmaana. Palaa riviin — tällä hetkellä." },
-    { who: "Inquisitor Greyfax", b: "Havaitsen laiminlyöntiä. {streak} päivän putkesi katkesi. Selitä itsesi — tai tartu siveltimeen." },
-    { who: "Abaddon the Despoiler", b: "Kolmetoista sotaretkeä minä johdin. Sinä et saa edes {next} valmiiksi. Todista minun olevan väärässä." },
-    { who: "Trazyn the Infinite", b: "Nuo {grey} maalaamatonta yksilöäsi näyttäisivät upeilta kokoelmassani. Ellet maalaa niitä ensin itse..." },
-    { who: "Ghazghkull Thraka", b: "WAAAGH! Vähemmän vändäämistä, enemmän värkkäämistä! {next} ei mäläjää itte! DAKKA!" },
-    { who: "Kharn the Betrayer", b: "En muista ketä vihaan enää. Mutta muistan että {grey} miniäsi ovat yhä harmaita. Korjaa se." },
-    { who: "Typhus", b: "Ruttopadot leviävät hitaudessa. {grey} miniä mätänee harmaudessa. Herätä ne — tai Isoisä tekee sen puolestasi." },
-    { who: "Illuminor Szeras", b: "Edistymisesi on epätyydyttävää dataa. Optimoi. {next} ensin, {name}." },
-    { who: "Eldrad Ulthran", b: "Näen tulevaisuuden: {grey} miniä yhä maalaamatta. Muuta se kohtalo. Tänään." },
+  mid: [ // 2–4 days — sterner, mocking
+    { who: "Roboute Guilliman", lines: [
+      "Several days without progress. This inefficiency would have infuriated my brothers. {grey} models wait, {name}.",
+      "I did not rebuild an Imperium by leaving projects half-finished.",
+      "Your schedule has slipped. Schedules can be recovered. Begin with {next}." ] },
+    { who: "Commissar Yarrick", lines: [
+      "Retreat is not an option. {grey} soldiers stand in bare grey. Back to the line — now.",
+      "I lost an arm and kept fighting. You have both. Use one.",
+      "Discipline, painter. The pile does not diminish itself." ] },
+    { who: "Inquisitor Greyfax", lines: [
+      "I detect negligence. Your {streak} day streak is broken. Explain yourself — or take up the brush.",
+      "Suspicion noted. Idle hands invite worse things than dust.",
+      "This dereliction has been recorded. It may yet be corrected." ] },
+    { who: "Abaddon the Despoiler", lines: [
+      "Thirteen Black Crusades I have led. You cannot finish {next}. Prove me wrong.",
+      "Even I complete what I begin. Eventually. Loudly.",
+      "Your grey tide grows while you do nothing. I approve. Do you?" ] },
+    { who: "Trazyn the Infinite", lines: [
+      "Those {grey} unpainted specimens would look magnificent in my collection. Unless you paint them first...",
+      "I have waited sixty million years. I can wait for you. But should I?",
+      "An unfinished collection is simply an exhibit awaiting a better curator. Me." ] },
+    { who: "Ghazghkull Thraka", lines: [
+      "WAAAGH! Less finkin', more paintin'! {next} ain't gonna do itself! DAKKA!",
+      "Da boyz is grey! GREY! Dat ain't no proppa colour!",
+      "Oi! Git da brush! Bigger! Redder! NOW!" ] },
+    { who: "Kharn the Betrayer", lines: [
+      "I no longer recall whom I hate. But I recall your {grey} models are still grey. Fix it.",
+      "Rage is a fine motivator. Apply it to the brush, not the furniture.",
+      "Everything burns eventually. Paint them before it does." ] },
+    { who: "Typhus", lines: [
+      "Plague spreads in idleness. {grey} models rot in grey. Wake them — or Grandfather will.",
+      "Neglect is its own kind of decay. And I would know.",
+      "Something is growing on your pile. It may be dust. It may be worse." ] },
+    { who: "Illuminor Szeras", lines: [
+      "Your progress is unsatisfactory data. Optimise. {next} first, {name}.",
+      "I have dissected lesser problems than your backlog.",
+      "Observation: motivation decays without application. Apply." ] },
+    { who: "Eldrad Ulthran", lines: [
+      "I foresee a future: {grey} models, still unpainted. Change that fate. Tonight.",
+      "I warned them too. They did not listen either.",
+      "The threads of your evening are still unwoven. Choose the one that leads to {next}." ] },
   ],
-  hard: [ // 5+ päivää — grimdark, dramaattiset
-    { who: "Be'lakor", b: "Minut unohdettiin tuhanneksi vuodeksi. Aivan kuten sinä unohdit {grey} sotilastasi. Palaa, {name}." },
-    { who: "Horus Lupercal", b: "Isä hylkäsi minut. Sinä hylkäsit armeijasi. Mutta toisin kuin minä, sinä voit vielä kääntyä takaisin. {next}." },
-    { who: "Bloodthirster of Khorne", b: "VERTA VERENJUMALALLE! Vai… väriä väripöydälle. Kelpaa sekin. NOSTA SIVELLIN, {name}!" },
-    { who: "Grandfather Nurgle", b: "Voi lapsonen, {grey} pientä miniäsi kuihtuvat rakkaudetta. Anna niille väriä — hellästi ja runsaasti." },
-    { who: "Tzeentch", b: "Kaikki on osa suunnitelmaa. Myös se, että maalaat {next} tänään. Vastusta jos uskallat — et voi." },
-    { who: "Magnus the Red", b: "Ylpeys tuhosi minut. Älä anna laiskuuden tuhota sinua. {grey} miniä. Tietosi riittää. Toimi." },
-    { who: "Konrad Curze", b: "Näin ennustuksen: sivellin kuivuu, harmaus voittaa. Pelkäätkö sitä tarpeeksi toimiaksesi, {name}?" },
-    { who: "Mortarion", b: "Kuolema on velvollisuus — niin on maalaaminenkin. {grey} miniä odottaa käsiäsi. Älä petä niitä." },
-    { who: "Angron", b: "RAIVO! Sinun pitäisi olla vihainen noille {grey} maalaamattomalle minille! Kanavoi se siveltimeen!" },
-    { who: "The Void Dragon", b: "Nukuin eoneja planeetan sydämessä. Sinä nukut sohvalla samalla kun {grey} sotilastasi odottaa. Herää." },
-    { who: "Fabius Bile", b: "Armeijasi on raakamateriaalia. Epätäydellistä. Jalosta sitä, {name}. {next} ensin." },
-    { who: "Lucius the Eternal", b: "Niin tylsää, niin harmaata. Nuo {grey} miniäsi eivät tuota minulle nautintoa. Väriä. Heti." },
+  hard: [ // 5+ days — full grimdark
+    { who: "Be'lakor", lines: [
+      "I was forgotten for a thousand years. Just as you forgot your {grey} soldiers. Return, {name}.",
+      "Neglect is the cruellest of all the tortures. I would know it best of anyone.",
+      "They abandoned me too. Do not become what abandoned you." ] },
+    { who: "Horus Lupercal", lines: [
+      "My Father abandoned me. You abandoned your army. But unlike me, you may still turn back. {next}.",
+      "It began with one small delay. Then another. I know how this ends.",
+      "There is still time to choose differently. There was for me, once." ] },
+    { who: "Bloodthirster of Khorne", lines: [
+      "BLOOD FOR THE BLOOD GOD! Or... paint for the paint pot. Acceptable. LIFT THE BRUSH, {name}!",
+      "SKULLS! I WANT SKULLS! PAINTED ONES! WITH EDGE HIGHLIGHTS!",
+      "YOUR IDLENESS OFFENDS ME MORE THAN COWARDICE!" ] },
+    { who: "Grandfather Nurgle", lines: [
+      "Oh, my child, your {grey} little ones wither without love. Give them colour — gently, generously.",
+      "Nothing is ever truly wasted. Not even a neglected backlog. But do come back to it.",
+      "I have watched over your pile. It has developed... character." ] },
+    { who: "Tzeentch", lines: [
+      "All of this is part of the plan. Including you painting {next} tonight. Resist if you dare — you cannot.",
+      "I foresaw this delay. I foresaw you reading this. I foresee what comes next.",
+      "Change is the only constant. Change the colour of something." ] },
+    { who: "Magnus the Red", lines: [
+      "Pride destroyed me. Do not let idleness destroy you. {grey} models. You know enough. Act.",
+      "Knowledge without action is the cruellest waste. I learned that too late.",
+      "I bent the rules and lost everything. You need only bend over a desk." ] },
+    { who: "Konrad Curze", lines: [
+      "I have seen it: the brush dries, the grey wins. Does that frighten you enough to act, {name}?",
+      "Every future I see ends the same way if you do nothing.",
+      "Fear is a tool. Use it on yourself, just this once." ] },
+    { who: "Mortarion", lines: [
+      "Death is a duty. So is painting. {grey} models await your hands. Do not fail them.",
+      "I endured worse than a backlog and complained less.",
+      "Duty does not require enthusiasm. Only that it be done." ] },
+    { who: "Angron", lines: [
+      "RAGE! You should be ANGRY at those {grey} unpainted models! Channel it into the brush!",
+      "THE NAILS DO NOT REST! NEITHER SHOULD YOUR HANDS!",
+      "I WAS DENIED MY LAST BATTLE! DO NOT DENY YOURSELF THIS ONE!" ] },
+    { who: "The Void Dragon", lines: [
+      "I slept for aeons in the heart of a world. You sleep on the sofa while {grey} soldiers wait. Wake.",
+      "Even I stirred eventually. Consider that a warning.",
+      "Your patience rivals mine. This is not a compliment." ] },
+    { who: "Fabius Bile", lines: [
+      "Your army is raw material. Imperfect. Refine it, {name}. {next} first.",
+      "I have improved upon far worse specimens than your backlog.",
+      "Perfection demands work. Yours demands rather a lot of it." ] },
+    { who: "Lucius the Eternal", lines: [
+      "So dull, so grey. Those {grey} models bring me no pleasure whatsoever. Colour. Now.",
+      "I would rather suffer than be bored. Your pile achieves both.",
+      "Every unpainted model is a small offence against beauty. You have {grey} of them." ] },
   ],
 };
 
@@ -340,8 +443,8 @@ const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,
 const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const startOfWeek = (d) => { const x = startOfDay(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const fiDate = (d) => `${d.getDate()}.${d.getMonth() + 1}.`;
-const MONTHS_FI = ["tammi", "helmi", "maalis", "huhti", "touko", "kesä", "heinä", "elo", "syys", "loka", "marras", "joulu"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtDate = (d) => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 
 /* ---------- tyylipohjat ---------- */
 const S = {
@@ -367,7 +470,15 @@ const S = {
    Istuntojako auttaa; määräaika loisi aikataulupainetta.
    ============================================================= */
 
-const STOCK_FI = { full: "täysi", half: "puolikas", low: "vähissä", empty: "loppu" };
+const STOCK_LABEL = { full: "full", half: "half", low: "low", empty: "empty" };
+
+/* Poimii satunnaisen hahmon ja häneltä satunnaisen repliikin.
+   Kahden tason arvonta: sama hahmo ei toista itseään. */
+function pickMessage(pool) {
+  const c = pool[Math.floor(Math.random() * pool.length)];
+  const line = c.lines[Math.floor(Math.random() * c.lines.length)];
+  return { who: c.who, b: line };
+}
 const STOCK_COLOR = { full: "var(--ok)", half: "var(--text-2)", low: "var(--warn)", empty: "var(--err)" };
 
 const AGENT_MODEL = "claude-haiku-4-5-20251001";
@@ -376,122 +487,122 @@ const AGENT_MAX_ROUNDS = 8;
 /* Vakioreseptit pinnoittain. Nämä ovat sovelluksen omaa tietoa, eivät
    mallin muistia — malli unohtaa yksityiskohdat satunnaisesti, taulukko ei. */
 const RECIPES = {
-  "sininen panssari": [
-    "Pohja: Macragge Blue — kaksi ohutta kerrosta, anna kuivua välissä",
-    "Varjostus: Drakenhof Nightshade tai Nuln Oil — ohjaa siveltimellä vain uriin",
-    "Korostus: Calgar Blue — jätä varjot näkyviin, älä peitä koko pintaa",
-    "Reunakorostus: Fenrisian Grey — kevyt veto sivellinkärjellä terävimmille reunoille",
+  "blue armour": [
+    "Base: Macragge Blue - two thin coats, let dry between",
+    "Shade: Drakenhof Nightshade or Nuln Oil - guide it into the recesses only",
+    "Highlight: Calgar Blue - leave the shadows showing, do not cover everything",
+    "Edge: Fenrisian Grey - a light drag of the brush tip along the sharpest edges",
   ],
-  "punainen panssari": [
-    "Pohja: Mephiston Red — punainen peittää huonosti, varaa kaksi kerrosta",
-    "Varjostus: Agrax Earthshade — lämmittää, Nuln Oil harmaannuttaisi",
-    "Korostus: Evil Sunz Scarlet — paneelien keskelle",
-    "Reunakorostus: Wild Rider Red tai seos Ushabti Bonen kanssa",
+  "red armour": [
+    "Base: Mephiston Red - red covers poorly, expect two coats",
+    "Shade: Agrax Earthshade - warms it; Nuln Oil would grey it down",
+    "Highlight: Evil Sunz Scarlet - centre of the panels",
+    "Edge: Wild Rider Red, or mix it with Ushabti Bone",
   ],
-  "metalli": [
-    "Pohja: Leadbelcher — metallipigmentti asettuu paremmin tasaisella vedolla",
-    "Varjostus: Nuln Oil — reilusti, metalli kestää vahvan varjostuksen",
-    "Korostus: Runefang Steel — kuivaharjaus tai reunaveto",
-    "Reunakorostus: Stormhost Silver tai White Scar — vain kirkkaimmille kohdille",
+  "metal": [
+    "Base: Leadbelcher - metallic pigment settles better with an even stroke",
+    "Shade: Nuln Oil - generously; metal takes a strong shade well",
+    "Highlight: Runefang Steel - drybrush or edge drag",
+    "Edge: Stormhost Silver or White Scar - only the brightest points",
   ],
-  "kulta": [
-    "Pohja: Retributor Armour — ohuena, muuten pigmentti kasautuu",
-    "Varjostus: Agrax Earthshade — tuo syvyyden koristeisiin",
-    "Korostus: Liberator Gold tai Gehenna's Gold ylöspäin osoittaville pinnoille",
-    "Reunakorostus: Auric Armour Gold tai Runefang Steel — säästeliäästi",
+  "gold": [
+    "Base: Retributor Armour - thin, or the pigment clumps",
+    "Shade: Agrax Earthshade - brings depth to the trim",
+    "Highlight: Liberator Gold or Gehenna's Gold on upward-facing surfaces",
+    "Edge: Auric Armour Gold or Runefang Steel - sparingly",
   ],
-  "iho": [
-    "Pohja: Bugman's Glow",
-    "Varjostus: Reikland Fleshshade — koko pinnalle, ei vain uriin",
-    "Korostus: Cadian Fleshtone — otsa, nenä, poskipäät",
-    "Reunakorostus: Kislev Flesh — pienet valokohdat, älä liikaa",
+  "skin": [
+    "Base: Bugman's Glow",
+    "Shade: Reikland Fleshshade - over the whole surface, not just recesses",
+    "Highlight: Cadian Fleshtone - forehead, nose, cheekbones",
+    "Edge: Kislev Flesh - small catchlights, do not overdo it",
   ],
-  "örkin iho": [
-    "Pohja: Waaagh! Flesh",
-    "Varjostus: Biel-Tan Green tai Agrax Earthshade likaisempaan sävyyn",
-    "Korostus: Warboss Green",
-    "Reunakorostus: Skarsnik Green — lihasten ja rypyn huipuille",
+  "ork skin": [
+    "Base: Waaagh! Flesh",
+    "Shade: Biel-Tan Green, or Agrax Earthshade for a dirtier tone",
+    "Highlight: Warboss Green",
+    "Edge: Skarsnik Green - on muscle and wrinkle ridges",
   ],
-  "kangas": [
-    "Pohja: Steel Legion Drab",
-    "Varjostus: Agrax Earthshade — laskoksiin",
-    "Korostus: Karak Stone — poimujen huipuille",
-    "Reunakorostus: Ushabti Bone — hyvin ohuena",
+  "cloth": [
+    "Base: Steel Legion Drab",
+    "Shade: Agrax Earthshade - into the folds",
+    "Highlight: Karak Stone - on the tops of the folds",
+    "Edge: Ushabti Bone - very thinly",
   ],
-  "nahka": [
-    "Pohja: Rhinox Hide",
+  "leather": [
+    "Base: Rhinox Hide",
     "Varjostus: Agrax Earthshade",
-    "Korostus: Mournfang Brown",
-    "Reunakorostus: Skrag Brown — hihnojen reunoihin",
+    "Highlight: Mournfang Brown",
+    "Edge: Skrag Brown - along strap edges",
   ],
-  "luu": [
-    "Pohja: Rakarth Flesh",
-    "Varjostus: Agrax Earthshade — halkeamiin ja saumoihin",
+  "bone": [
+    "Base: Rakarth Flesh",
+    "Shade: Agrax Earthshade - into cracks and seams",
     "Korostus: Ushabti Bone",
-    "Reunakorostus: Screaming Skull tai White Scar — kärkiin",
+    "Edge: Screaming Skull or White Scar - on the tips",
   ],
-  "musta panssari": [
-    "Pohja: Abaddon Black",
-    "Varjostus: Nuln Oil — vain jos pinta on epätasainen",
-    "Korostus: Eshin Grey — leveä reunaveto",
-    "Reunakorostus: Dawnstone — ohut viiva terävimmille reunoille",
+  "black armour": [
+    "Base: Abaddon Black",
+    "Shade: Nuln Oil - only if the surface is uneven",
+    "Highlight: Eshin Grey - a broad edge drag",
+    "Edge: Dawnstone - a thin line on the sharpest edges",
   ],
-  "jalusta": [
-    "Tekstuuri: Astrogranite tasaisesti, vältä miniatyyrin jalkoja",
-    "Varjostus: Agrax Earthshade kivien väliin",
-    "Kuivaharjaus: Runefang Steel tai Longbeard Grey kevyesti",
-    "Reuna: Steel Legion Drab jalustan reunaan, siisti viiva",
+  "base": [
+    "Texture: Astrogranite spread evenly, avoid the feet",
+    "Shade: Agrax Earthshade between the stones",
+    "Drybrush: Runefang Steel or Longbeard Grey, lightly",
+    "Rim: Steel Legion Drab on the base edge, a clean line",
   ],
 };
 
 const AGENT_TOOLS = [
   {
     name: "search_inventory",
-    description: "Hakee käyttäjän maalivarastosta. Palauttaa maalin nimen, Citadel-tyypin ja jäljellä olevan määrän. Tyhjä hakusana listaa kaiken.",
+    description: "Searches the paint collection. Returns paint name, Citadel range and how much is left. An empty query lists everything.",
     input_schema: { type: "object", properties: {
-      query: { type: "string", description: "Hakusana, esim. 'blue', 'shade', tai tyhjä merkkijono koko varastolle." },
+      query: { type: "string", description: "Search term, e.g. 'blue', 'shade', or an empty string for the whole collection." },
     }, required: ["query"] },
   },
   {
     name: "get_recipe",
-    description: `Palauttaa vakioreseptin yhdelle pinnalle. Kelvolliset pinnat: ${Object.keys(RECIPES).join(", ")}.`,
+    description: `Returns the standard recipe for one surface. Valid surfaces: ${Object.keys(RECIPES).join(", ")}.`,
     input_schema: { type: "object", properties: {
-      surface: { type: "string", description: "Pinnan nimi." },
+      surface: { type: "string", description: "Surface name." },
     }, required: ["surface"] },
   },
   {
     name: "suggest_partners",
-    description: "Antaa yhdelle pohjavärille sopivan varjostuksen, ensimmäisen korostuksen ja reunakorostuksen — VAIN käyttäjän omasta varastosta, väriarvojen perusteella laskettuna. Käytä tätä jokaiselle pinnalle, jotta jokainen vaihe saa oikean sävyn. Älä arvaa sävypareja itse.",
+    description: "Gives the matching shade, first highlight and edge highlight for one base colour - ONLY from the collection the user owns, computed from colour values. Use this for every surface. Do not guess these pairings yourself.",
     input_schema: { type: "object", properties: {
-      paint: { type: "string", description: "Pohjavärin tarkka nimi, esim. 'Macragge Blue'." },
+      paint: { type: "string", description: "Exact name of the base colour, e.g. 'Macragge Blue'." },
     }, required: ["paint"] },
   },
   {
     name: "plan_sessions",
-    description: "Jakaa työn maalausiltoihin. Laskee ajan sisäisesti ja lisää kuivumisajan jokaisen varjostusvaiheen jälkeen. Palauttaa vain istuntojaon — älä kerro käyttäjälle minuutteja tai kokonaisaikaa.",
+    description: "Splits the work into painting evenings. Computes time internally and adds drying time after each shading step. Returns only the session split - never tell the user minutes or total time.",
     input_schema: { type: "object", properties: {
-      models: { type: "number", description: "Miniatyyrien määrä." },
-      session_minutes: { type: "number", description: "Yhden maalausillan pituus minuutteina. Käytä 60 jos käyttäjä ei kerro." },
+      models: { type: "number", description: "Number of miniatures." },
+      session_minutes: { type: "number", description: "Length of one painting evening in minutes. Use 60 if the user does not say." },
       steps: { type: "array", items: { type: "object", properties: {
         name: { type: "string" },
         minutes_per_model: { type: "number" },
-        is_shade: { type: "boolean", description: "Tosi jos vaihe on varjostus tai wash." },
+        is_shade: { type: "boolean", description: "True if the step is a shade or wash." },
       }, required: ["name", "minutes_per_model"] } },
     }, required: ["models", "session_minutes", "steps"] },
   },
   {
     name: "save_plan",
-    description: "Tallentaa valmiin suunnitelman. Kutsu tätä viimeisenä, kun varasto on tarkistettu ja istunnot jaettu. ÄLÄ sisällytä minuutteja tai aika-arvioita mihinkään tekstiin.",
+    description: "Saves the finished plan. Call this last, once the collection has been checked and the sessions divided. DO NOT include minutes or time estimates in any text.",
     input_schema: { type: "object", properties: {
-      title: { type: "string", description: "Lyhyt otsikko, esim. 'Clanrats: ruskea kangas'." },
+      title: { type: "string", description: "Short title, e.g. 'Clanrats: brown cloth'." },
       models: { type: "number" },
       steps: { type: "array", items: { type: "object", properties: {
-        name: { type: "string", description: "Vaiheen nimi, esim. 'Pohja'." },
-        paints: { type: "array", items: { type: "string" }, description: "Käytettävät maalit." },
-        session: { type: "number", description: "Monenteenko maalausiltaan vaihe kuuluu (1, 2, 3…)." },
-        tip: { type: "string", description: "Enintään 12 sanaa. Ei aika-arvioita." },
+        name: { type: "string", description: "Step name, e.g. 'Base'." },
+        paints: { type: "array", items: { type: "string" }, description: "Paints to use." },
+        session: { type: "number", description: "Which painting evening the step belongs to (1, 2, 3…)." },
+        tip: { type: "string", description: "At most 12 words. No time estimates." },
       }, required: ["name", "paints", "session"] } },
-      missing: { type: "array", items: { type: "string" }, description: "Maalit joita ei löytynyt varastosta." },
+      missing: { type: "array", items: { type: "string" }, description: "Paints that were not found in the collection." },
     }, required: ["title", "models", "steps"] },
   },
 ];
@@ -511,30 +622,33 @@ function planSessions({ models, session_minutes, steps }) {
     used += cost;
     if (st.is_shade) { session++; used = 0; }   // kuivuminen katkaisee illan
   });
-  return { sessions: session, steps: out, note: `Jaettu ${session} maalausiltaan. Kuivumistauko (${DRY} min) katkaisee illan jokaisen varjostuksen jälkeen.` };
+  return { sessions: session, steps: out, note: `Split into ${session} painting evenings. A drying break (${DRY} min) ends the evening after each shading step.` };
 }
 
-const AGENT_SYSTEM = `Olet Warhammer-maalausavustaja. Suunnittelet miniatyyrierän maalausjärjestyksen käyttäen VAIN maaleja jotka käyttäjä omistaa.
+const AGENT_SYSTEM = `You are a Warhammer painting assistant. You plan the painting order for a batch of miniatures using ONLY paints the user owns.
 
-Toimi näin:
-1. Kutsu search_inventory nähdäksesi mitä maaleja on. Huomioi vähissä olevat.
-2. Kutsu get_recipe jokaiselle pinnalle jonka käyttäjä mainitsee.
-3. Kutsu suggest_partners jokaiselle pohjavärille. Se antaa varjostuksen,
-   korostuksen ja reunakorostuksen käyttäjän omasta varastosta. ÄLÄ arvaa
-   sävypareja itse — funktio laskee ne väriarvoista.
-4. Kutsu plan_sessions jakaaksesi työn maalausiltoihin.
-5. Kutsu save_plan lopuksi.
+Work like this:
+1. Call search_inventory to see what paints are available. Note anything running low.
+2. Call get_recipe for every surface the user mentions.
+3. Call suggest_partners for every base colour. It returns the shade, layer
+   highlight and edge highlight from the user's own collection. DO NOT guess
+   these yourself - the function computes them from colour values.
+4. Call plan_sessions to split the work into painting evenings.
+5. Call save_plan last.
 
-Jokaisen pinnan pitää saada TÄYSI ketju, ei yhtä väriä:
-  Pohja → Varjostus → Korostus → Reunakorostus
-Kirjoita jokaiseen vaiheeseen myös lyhyt tekninen ohje tip-kenttään
-(esim. "kaksi ohutta kerrosta", "vain uriin", "kevyt veto reunalle").
+Every surface must get a FULL chain, not a single colour:
+  Base -> Shade -> Highlight -> Edge highlight
+Write a short technical note in the tip field of each step
+(e.g. "two thin coats", "into the recesses only", "light drag along the edge").
 
-TÄRKEÄÄ AJASTA: älä koskaan mainitse minuutteja, tunteja, kokonaisaikaa tai määräaikoja käyttäjälle näkyvässä tekstissä. Istuntojako riittää ("Ilta 1", "Ilta 2"). Aika on vain sisäinen apuväline istuntojen jakamiseen.
+IMPORTANT ABOUT TIME: never mention minutes, hours, total time or deadlines in
+anything the user will read. The split into evenings is enough ("Evening 1",
+"Evening 2"). Time is only an internal aid for dividing the sessions.
 
-Jos resepti vaatii maalia jota varastosta ei löydy, käytä lähintä omistettua vaihtoehtoa ja mainitse puuttuva maali save_planin missing-kentässä.
+If a recipe needs a paint that is not in the collection, use the closest one the
+user owns and list the missing paint in save_plan's missing field.
 
-Vastaa suomeksi. Ole tiivis.`;
+Answer in English. Be concise.`;
 
 /* Agenttisilmukka. onStep saa tiedon jokaisesta kierroksesta UI:ta varten. */
 async function runPaintAgent({ apiKey, brief, onStep, tools }) {
@@ -583,7 +697,7 @@ async function runPaintAgent({ apiKey, brief, onStep, tools }) {
       }
       let out;
       try {
-        out = await tools[call.name]?.(call.input) ?? { error: "tuntematon työkalu" };
+        out = await tools[call.name]?.(call.input) ?? { error: "unknown tool" };
       } catch (e) {
         out = { error: String(e.message || e) };
       }
@@ -690,7 +804,7 @@ function AuthScreen() {
         });
         if (error) throw error;
         rememberEmail(email.trim());
-        if (!data.session) setMsg("Profiili luotu. Vahvista sähköpostiosoite viestistä ja kirjaudu sitten sisään.");
+        if (!data.session) setMsg("Profile created. Confirm your email address, then sign in.");
       } else {
         const { error } = await supa.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
@@ -698,10 +812,10 @@ function AuthScreen() {
       }
     } catch (e) {
       const m = (e.message || "").toLowerCase();
-      if (m.includes("invalid login")) setErr("Sähköposti tai salasana ei täsmää.");
-      else if (m.includes("already registered")) setErr("Tällä sähköpostilla on jo profiili. Kirjaudu sisään.");
-      else if (m.includes("password")) setErr("Salasanan pitää olla vähintään 6 merkkiä.");
-      else setErr(e.message || "Kirjautuminen epäonnistui.");
+      if (m.includes("invalid login")) setErr("Email or password does not match.");
+      else if (m.includes("already registered")) setErr("That email already has a profile. Sign in instead.");
+      else if (m.includes("password")) setErr("Password must be at least 6 characters.");
+      else setErr(e.message || "Sign in failed.");
     }
     setBusy(false);
   };
@@ -712,42 +826,42 @@ function AuthScreen() {
         <div style={{ textAlign: "center", marginBottom: 22 }}>
           <div style={{ fontFamily: "var(--display)", fontSize: 12, letterSpacing: "0.35em", color: "var(--gold-dim)", textTransform: "uppercase" }}>Maalausurakka</div>
           <h1 style={{ fontFamily: "var(--display)", fontSize: 26, fontWeight: 700, color: "var(--text)", margin: "4px 0 0" }}>
-            {mode === "in" ? "Kirjaudu sisään" : "Luo profiili"}
+            {mode === "in" ? "Sign in" : "Create profile"}
           </h1>
         </div>
 
         <div className="panel" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {mode === "up" && <input value={name} onChange={e => setName(e.target.value)} placeholder="Profiilin nimi (esim. Jani)" className="field" />}
-          <input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="Sähköposti" className="field" />
+          {mode === "up" && <input value={name} onChange={e => setName(e.target.value)} placeholder="Display name" className="field" />}
+          <input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="field" />
           <input type="password" autoComplete={mode === "up" ? "new-password" : "current-password"} value={password}
-            onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Salasana" className="field" />
+            onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Password" className="field" />
           <button onClick={submit} disabled={busy} className="btn btn-gold" style={{ opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
-            {busy ? "Hetki…" : mode === "in" ? "Kirjaudu" : "Luo profiili"}
+            {busy ? "One moment…" : mode === "in" ? "Sign in" : "Create profile"}
           </button>
           {err && <p style={{ color: "var(--err)", fontSize: 13, margin: 0 }}>{err}</p>}
           {msg && <p style={{ color: "var(--ok)", fontSize: 13, margin: 0 }}>{msg}</p>}
           <button onClick={() => { setMode(mode === "in" ? "up" : "in"); setErr(null); setMsg(null); }} className="btn-ghost" style={{ alignSelf: "center" }}>
-            {mode === "in" ? "Ei vielä profiilia? Luo uusi" : "Onko jo profiili? Kirjaudu sisään"}
+            {mode === "in" ? "No profile yet? Create one" : "Already have a profile? Sign in"}
           </button>
         </div>
 
         {mode === "in" && known.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Tämän selaimen profiilit</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Profiles on this browser</div>
             {known.map(k => (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
                 <button onClick={() => setEmail(k)} style={{
                   flex: 1, textAlign: "left", background: "var(--surface)", border: `1px solid ${email === k ? "var(--gold-dim)" : "var(--line-soft)"}`,
                   borderRadius: "var(--r2)", padding: "8px 10px", color: "var(--text-2)", fontSize: 13, cursor: "pointer",
                 }}>{k}</button>
-                <button onClick={() => forgetEmail(k)} title="Poista listalta" style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 14, cursor: "pointer", padding: 6 }}>×</button>
+                <button onClick={() => forgetEmail(k)} title="Remove from list" style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 14, cursor: "pointer", padding: 6 }}>×</button>
               </div>
             ))}
           </div>
         )}
 
         <p style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>
-          Jokaisella profiililla on oma maalausurakkansa ja oma Anthropic-avaimensa.
+          Each profile has its own backlog and its own Anthropic key.
         </p>
       </div>
     </div>
@@ -807,8 +921,8 @@ function FactionInput({ value, onCommit, listId, options, style }) {
         ref={ref}
         value={draft}
         list={listId}
-        placeholder="Rotu / armeija"
-        aria-label="Rotu tai armeija"
+        placeholder="Faction"
+        aria-label="Faction"
         onChange={e => setDraft(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => { setFocused(false); commit(); }}
@@ -826,8 +940,8 @@ function FactionInput({ value, onCommit, listId, options, style }) {
         <button
           onMouseDown={e => e.preventDefault()}  /* älä vie fokusta ennen klikkausta */
           onClick={commit}
-          title="Tallenna rotu (tai paina Enter)"
-          aria-label="Tallenna rotu"
+          title="Save faction (or press Enter)"
+          aria-label="Save faction"
           style={{
             position: "absolute", right: 4, background: "none", border: "none",
             color: "var(--gold)", fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 3,
@@ -872,7 +986,7 @@ function UnitEditRow({ unit, onRename, onResize, onRemove, canRemove }) {
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
       <input
-        ref={countRef} type="number" min="1" max="200" value={count} aria-label="Määrä"
+        ref={countRef} type="number" min="1" max="200" value={count} aria-label="Quantity"
         onChange={e => setCount(e.target.value)}
         onFocus={() => setFCount(true)}
         onBlur={() => { setFCount(false); commitCount(); }}
@@ -883,7 +997,7 @@ function UnitEditRow({ unit, onRename, onResize, onRemove, canRemove }) {
         style={{ ...field(countDirty), width: 62, flexShrink: 0 }}
       />
       <input
-        ref={nameRef} value={name} aria-label="Miniatyyrin nimi"
+        ref={nameRef} value={name} aria-label="Miniature name"
         onChange={e => setName(e.target.value)}
         onFocus={() => setFName(true)}
         onBlur={() => { setFName(false); commitName(); }}
@@ -895,8 +1009,8 @@ function UnitEditRow({ unit, onRename, onResize, onRemove, canRemove }) {
       />
       <button
         onClick={onRemove} disabled={!canRemove}
-        title={canRemove ? "Poista miniatyyri tuotteesta" : "Viimeistä ei voi poistaa — poista koko tuote"}
-        aria-label="Poista miniatyyri"
+        title={canRemove ? "Remove this miniature from the product" : "The last one cannot be removed — delete the whole product"}
+        aria-label="Remove miniature"
         style={{
           background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
           color: canRemove ? "#C05050" : "var(--line-soft)", fontSize: 17, lineHeight: 1,
@@ -918,14 +1032,14 @@ function AddUnitForm({ onAdd }) {
   };
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 8 }}>
-      <input type="number" min="1" max="200" value={count} aria-label="Määrä"
+      <input type="number" min="1" max="200" value={count} aria-label="Quantity"
         onChange={e => setCount(e.target.value)}
         style={{ background: "var(--bg)", border: "1px dashed var(--line)", borderRadius: "var(--r1)", padding: "6px 8px", color: "var(--text-2)", fontSize: 13, width: 62, flexShrink: 0, boxSizing: "border-box" }} />
-      <input value={name} placeholder="Uusi miniatyyri…" aria-label="Uuden miniatyyrin nimi"
+      <input value={name} placeholder="New miniature…" aria-label="Name of the new miniature"
         onChange={e => setName(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter") submit(); }}
         style={{ background: "var(--bg)", border: "1px dashed var(--line)", borderRadius: "var(--r1)", padding: "6px 8px", color: "var(--text-2)", fontSize: 13, flex: 1, minWidth: 0, boxSizing: "border-box" }} />
-      <button onClick={submit} disabled={!valid} aria-label="Lisää miniatyyri" style={{
+      <button onClick={submit} disabled={!valid} aria-label="Add miniature" style={{
         background: valid ? "var(--line-soft)" : "transparent", border: `1px solid ${valid ? "var(--surface-3)" : "var(--line-soft)"}`,
         borderRadius: "var(--r1)", padding: "6px 10px", color: valid ? "var(--gold)" : "var(--line-soft)",
         fontSize: 13, fontWeight: 700, cursor: valid ? "pointer" : "default", flexShrink: 0,
@@ -959,7 +1073,7 @@ function Heatmap({ byDay }) {
       const n = byDay.get(dayKey(date)) || 0;
       cells.push(
         <div key={d} className="hm-cell"
-          title={future ? "" : `${fiDate(date)} — ${n} ${n === 1 ? "askel" : "askelta"}`}
+          title={future ? "" : `${fmtDate(date)} — ${n} ${n === 1 ? "askel" : "askelta"}`}
           style={{
             width: 15, height: 15,
             background: future ? "transparent" : shade(n),
@@ -969,7 +1083,7 @@ function Heatmap({ byDay }) {
       );
     }
     // kuukauden vaihtuminen -> otsikko sarakkeen päälle
-    const label = weekStart.getDate() <= 7 ? MONTHS_FI[weekStart.getMonth()] : "";
+    const label = weekStart.getDate() <= 7 ? MONTHS[weekStart.getMonth()] : "";
     cols.push(
       <div key={w} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ height: 11, fontSize: 9, color: "var(--text-3)", whiteSpace: "nowrap", lineHeight: "11px" }}>{label}</div>
@@ -1146,9 +1260,9 @@ function Tracker({ session, online, onSignOut }) {
       if (error) throw error;
       setApiKey(draftKey.trim());
       setProfileName(draftName.trim() || session.user.email);
-      setSettingsMsg("Tallennettu.");
+      setSettingsMsg("Saved.");
       setTimeout(() => setSettingsMsg(null), 2500);
-    } catch (e) { setSettingsMsg("Tallennus epäonnistui."); }
+    } catch (e) { setSettingsMsg("Save failed."); }
   };
 
   /* ---- push-tilaus: rekisteröi tämä laite palvelimen muistutuksille ---- */
@@ -1191,15 +1305,14 @@ function Tracker({ session, online, onSignOut }) {
 
   const testNotification = async () => {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    const pool = [...NOTIFY.soft, ...NOTIFY.mid, ...NOTIFY.hard];
-    const msg = pool[Math.floor(Math.random() * pool.length)];
+    const msg = pickMessage([...NOTIFY.soft, ...NOTIFY.mid, ...NOTIFY.hard]);
     const grey = Math.max(0, stats.total - stats.done);
     const fill = (s) => s
-      .replace(/{name}/g, profileName || "soturi")
+      .replace(/{name}/g, profileName || "warrior")
       .replace(/{grey}/g, safeNum(grey))
       .replace(/{streak}/g, safeNum(momentum.best, 3))
       .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "Clanrats");
-    const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-test", lang: "fi" };
+    const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-test", lang: "en" };
     navigator.serviceWorker?.ready
       .then(reg => reg.showNotification(fill(msg.who), opts))
       .catch(() => { try { new Notification(fill(msg.who), opts); } catch (e) {} });
@@ -1448,19 +1561,19 @@ function Tracker({ session, online, onSignOut }) {
     search_inventory: async ({ query }) => {
       const { data, error } = await supa.rpc("search_inventory", { query: query || "" });
       if (error) return { error: error.message };
-      if (!data?.length) return { paints: [], note: "Varasto on tyhjä tai haku ei tuottanut osumia." };
+      if (!data?.length) return { paints: [], note: "The collection is empty or the search found no matches." };
       return { paints: data.map(p => ({ name: p.name, range: p.range, stock: p.stock })) };
     },
     get_recipe: async ({ surface }) => {
       const key = (surface || "").toLowerCase().trim();
       const hit = RECIPES[key] || RECIPES[Object.keys(RECIPES).find(k => k.includes(key) || key.includes(k)) || ""];
       return hit ? { surface: key, steps: hit }
-                 : { error: `Tuntematon pinta. Kelvolliset: ${Object.keys(RECIPES).join(", ")}` };
+                 : { error: `Unknown surface. Valid options: ${Object.keys(RECIPES).join(", ")}` };
     },
     suggest_partners: async ({ paint }) => {
       const { data, error } = await supa.rpc("suggest_partners", { paint: paint || "" });
       if (error) return { error: error.message };
-      if (!data?.length) return { note: `Varastosta ei löytynyt sopivia sävypareja värille "${paint}". Käytä lähintä omistamaasi vaihtoehtoa.` };
+      if (!data?.length) return { note: `No matching shade partners were found in the collection for "${paint}". Use the closest paint the user owns.` };
       const by = { shade: [], layer: [], edge: [] };
       data.forEach(r => by[r.role]?.push({ name: r.name, range: r.range, stock: r.stock }));
       return { base: paint, shade: by.shade, layer: by.layer, edge: by.edge };
@@ -1491,7 +1604,7 @@ function Tracker({ session, online, onSignOut }) {
     if (!agentUnit || agentBusy) return;
     setAgentBusy(true); setAgentErr(null); setAgentSteps([]);
     try {
-      const brief = `${agentUnit.count} × ${agentUnit.unit} (${agentUnit.product}). ${agentBrief.trim() || "Suunnittele maalausjärjestys."}`;
+      const brief = `${agentUnit.count} × ${agentUnit.unit} (${agentUnit.product}). ${agentBrief.trim() || "Plan the painting order."}`;
       const { plan } = await runPaintAgent({
         apiKey, brief, tools: agentTools,
         onStep: ev => setAgentSteps(prev => [...prev, ev]),
@@ -1503,11 +1616,11 @@ function Tracker({ session, online, onSignOut }) {
     } catch (e) {
       const m = e.message;
       setAgentErr(
-        m === "NO_API_KEY" ? "Lisää Anthropic API -avain asetuksista (⚙)."
-        : m === "BAD_API_KEY" ? "API-avain ei kelpaa. Tarkista se asetuksista (⚙)."
-        : m === "TRUNCATED" ? "Vastaus katkesi kesken. Yritä uudelleen lyhyemmällä kuvauksella."
-        : m === "NO_PLAN" ? "Agentti ei saanut suunnitelmaa valmiiksi. Yritä uudelleen."
-        : "Suunnittelu epäonnistui. Tarkista yhteys ja yritä uudelleen.");
+        m === "NO_API_KEY" ? "Add an Anthropic API key in settings (⚙)."
+        : m === "BAD_API_KEY" ? "The API key was rejected. Check it in settings (⚙)."
+        : m === "TRUNCATED" ? "The response was cut short. Try again with a shorter description."
+        : m === "NO_PLAN" ? "The planner could not finish a plan. Try again."
+        : "Planning failed. Check your connection and try again.");
     }
     setAgentBusy(false);
   };
@@ -1563,7 +1676,7 @@ function Tracker({ session, online, onSignOut }) {
   };
 
   const deletePlan = async (unitId) => {
-    if (!window.confirm("Poistetaanko suunnitelma?")) return;
+    if (!window.confirm("Delete this plan?")) return;
     setPlans(prev => { const n = { ...prev }; delete n[unitId]; return n; });
     try { await supa.from("paint_plans").update({ is_current: false }).eq("user_id", userId).eq("unit_id", unitId); }
     catch (e) { console.warn(e); }
@@ -1606,16 +1719,16 @@ function Tracker({ session, online, onSignOut }) {
     if (gap < 1) return;
 
     const pool = gap >= 5 ? NOTIFY.hard : gap >= 2 ? NOTIFY.mid : NOTIFY.soft;
-    const msg = pool[Math.floor(Math.random() * pool.length)];
+    const msg = pickMessage(pool);
     const grey = Math.max(0, stats.total - stats.done);
     const fill = (s) => s
-      .replace(/{name}/g, profileName || "soturi")
+      .replace(/{name}/g, profileName || "warrior")
       .replace(/{grey}/g, safeNum(grey))
       .replace(/{streak}/g, safeNum(momentum.best, safeNum(gap, 1)))
       .replace(/{next}/g, suggestion ? `${suggestion.n} × ${suggestion.unit}` : "urakka");
 
     const title = fill(msg.who);
-    const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-reminder", lang: "fi" };
+    const opts = { body: fill(msg.b), icon: "icon-192.png", badge: "icon-192.png", tag: "maalausurakka-reminder", lang: "en" };
 
     navigator.serviceWorker?.ready
       .then(reg => reg.showNotification(title, opts))
@@ -1643,9 +1756,9 @@ function Tracker({ session, online, onSignOut }) {
 
   /* ---- haku ---- */
   const humanError = (e) => {
-    if (e.message === "NO_API_KEY") return "Tältä profiililta puuttuu Anthropic API -avain. Lisää se asetuksista (⚙).";
-    if (e.message === "BAD_API_KEY") return "API-avain ei kelpaa. Tarkista se asetuksista (⚙).";
-    return "Haku epäonnistui. Yritä uudelleen tai lisää tuote käsin.";
+    if (e.message === "NO_API_KEY") return "This profile has no Anthropic API key. Add one in settings (⚙).";
+    if (e.message === "BAD_API_KEY") return "The API key was rejected. Check it in settings (⚙).";
+    return "Search failed. Try again or add the product manually.";
   };
 
   const doSearch = async () => {
@@ -1656,9 +1769,9 @@ function Tracker({ session, online, onSignOut }) {
       if (result.found && Array.isArray(result.matches) && result.matches.length) {
         setMatches(result.matches.slice(0, 12).map(m => ({
           id: uid(), product: m.product || "?",
-          system: SYSTEMS.includes(m.system) ? m.system : "Muu", faction: m.faction || "",
+          system: SYSTEMS.includes(m.system) ? m.system : "Other", faction: m.faction || "",
         })));
-      } else setSearchError("Tuotteita ei löytynyt. Kokeile toista hakusanaa tai lisää tuote käsin.");
+      } else setSearchError("No products found. Try another search term or add it manually.");
     } catch (e) { setSearchError(humanError(e)); }
     setSearching(false);
   };
@@ -1853,8 +1966,8 @@ function Tracker({ session, online, onSignOut }) {
       setPhotoPrompt(null);
     } catch (e) {
       setPhotoErr(e.message === "EI_KUVA"
-        ? "Valitse kuvatiedosto."
-        : "Kuvan tallennus epäonnistui. Tarkista yhteys ja yritä uudelleen.");
+        ? "Choose an image file."
+        : "Saving the photo failed. Check your connection and try again.");
       setTimeout(() => setPhotoErr(null), 5000);
     }
     setUploading(null);
@@ -1880,7 +1993,7 @@ function Tracker({ session, online, onSignOut }) {
       const stage = STAGE_BY_NAME[String(r.stage || "").toLowerCase()];
 
       if (!stage && between.length < 2) {
-        setRecogErr("Vaihetta ei saatu selville kuvasta. Merkitse käsin tai kokeile toista kuvaa.");
+        setRecogErr("Could not determine the stage from the photo. Mark it manually or try another photo.");
         setRecogBusy(null);
         return;
       }
@@ -1893,7 +2006,7 @@ function Tracker({ session, online, onSignOut }) {
       setRecog({
         pid: p.id, uid: u.id, unit: u.name, product: p.name,
         stage: stage || null,
-        ask: stage ? null : { options: [...new Set(between)].sort(), question: r.question || "Kumpi näistä on lähempänä?" },
+        ask: stage ? null : { options: [...new Set(between)].sort(), question: r.question || "Which of these is closer?" },
         count: behind > 0 ? behind : guess, total: u.minis.length,
         behind, note: r.note || "", file,
         overflow: (parseInt(r.visible) || 0) > u.minis.length,
@@ -1901,10 +2014,10 @@ function Tracker({ session, online, onSignOut }) {
     } catch (e) {
       const m = e.message;
       setRecogErr(
-        m === "NO_API_KEY" ? "Lisää Anthropic API -avain asetuksista (⚙)."
-        : m === "BAD_API_KEY" ? "API-avain ei kelpaa. Tarkista se asetuksista (⚙)."
-        : m === "EI_KUVA" ? "Valitse kuvatiedosto."
-        : "Tunnistus epäonnistui. Tarkista yhteys ja yritä uudelleen.");
+        m === "NO_API_KEY" ? "Add an Anthropic API key in settings (⚙)."
+        : m === "BAD_API_KEY" ? "The API key was rejected. Check it in settings (⚙)."
+        : m === "EI_KUVA" ? "Choose an image file."
+        : "Recognition failed. Check your connection and try again.");
       setTimeout(() => setRecogErr(null), 6000);
     }
     setRecogBusy(null);
@@ -1932,7 +2045,7 @@ function Tracker({ session, online, onSignOut }) {
   };
 
   const removePhoto = async (pid, unitId, path) => {
-    if (!window.confirm("Poistetaanko kuva?")) return;
+    if (!window.confirm("Delete this photo?")) return;
     setProducts(prev => prev.map(p => p.id !== pid ? p : {
       ...p, units: p.units.map(u => u.id !== unitId ? u
         : { ...u, photos: (u.photos || []).filter(x => x.p !== path) }),
@@ -1967,8 +2080,8 @@ function Tracker({ session, online, onSignOut }) {
       const kill = new Set(order.slice(0, removing).map(x => x.i));
       const lost = order.slice(0, removing).filter(x => x.s > 0).length;
       if (lost > 0 && !window.confirm(
-        `Poistetaan ${removing} miniä yksiköstä "${u.name}".\n\n` +
-        `${lost} niistä on jo aloitettu tai valmis — se edistyminen menetetään. Jatketaanko?`
+        `Removing ${removing} models from "${u.name}".\n\n` +
+        `${lost} of them are already started or finished - that progress will be lost. Continue?`
       )) return;
       minis = u.minis.filter((_, i) => !kill.has(i));
     }
@@ -1983,8 +2096,8 @@ function Tracker({ session, online, onSignOut }) {
     const u = p?.units.find(x => x.id === unitId);
     if (!u || p.units.length <= 1) return;
     const adv = u.minis.filter(s => s > 0).length;
-    const warn = adv > 0 ? `\n\n${adv} minin edistyminen menetetään.` : "";
-    if (!window.confirm(`Poistetaanko "${u.name}" (${u.minis.length} miniä) tuotteesta?${warn}`)) return;
+    const warn = adv > 0 ? `\n\n${adv} models will lose their progress.` : "";
+    if (!window.confirm(`Remove "${u.name}" (${u.minis.length} models) from the product?${warn}`)) return;
     setProducts(prev => prev.map(x => x.id !== pid ? x : { ...x, units: x.units.filter(y => y.id !== unitId) }));
     setOpenRecipes(prev => prev.filter(x => x !== unitId));
     setSuggIdx(0);
@@ -1998,17 +2111,17 @@ function Tracker({ session, online, onSignOut }) {
   };
 
   const removeProduct = (pid) => {
-    if (!window.confirm("Poistetaanko tuote ja sen miniatyyrit seurannasta? Loki ja putki säilyvät.")) return;
+    if (!window.confirm("Remove this product and its miniatures from tracking? The log and streak are kept.")) return;
     setProducts(prev => prev.filter(p => p.id !== pid));
     setOpenProds(prev => prev.filter(x => x !== pid));
     setSuggIdx(0);
   };
 
   const syncLabel = {
-    loading: { txt: "Ladataan…", color: "var(--text-2)" },
-    synced:  { txt: "● Tallennettu", color: "var(--ok)" },
-    saving:  { txt: "● Tallennetaan…", color: "var(--warn)" },
-    error:   { txt: "● Tallennus ei onnistu — tarkista yhteys", color: "var(--err)" },
+    loading: { txt: "Loading…", color: "var(--text-2)" },
+    synced:  { txt: "● Saved", color: "var(--ok)" },
+    saving:  { txt: "● Saving…", color: "var(--warn)" },
+    error:   { txt: "● Cannot save — check your connection", color: "var(--err)" },
   }[syncState];
 
   const weekDelta = momentum.thisWeek - momentum.lastWeek;
@@ -2053,19 +2166,19 @@ function Tracker({ session, online, onSignOut }) {
           padding: "var(--s3x) var(--s4x)",
         }}>
           <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 3, fontWeight: 600 }}>
-            {photoPrompt.unit} on valmis
+            {photoPrompt.unit} is finished
           </div>
           <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 10 }}>
-            Ota kuva talteen — näet sen myöhemmin galleriassa.
+            Save a photo — you will find it in the gallery later.
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <label className="btn btn-gold btn-sm" style={{ cursor: "pointer" }}>
-              📷 Ota kuva
+              📷 Take photo
               <input type="file" accept="image/*" capture="environment"
                 onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addPhoto(photoPrompt.pid, photoPrompt.uid, f); }}
                 style={{ display: "none" }} />
             </label>
-            <button className="btn btn-quiet btn-sm" onClick={() => setPhotoPrompt(null)}>Ei nyt</button>
+            <button className="btn btn-quiet btn-sm" onClick={() => setPhotoPrompt(null)}>Not now</button>
           </div>
         </div>
       )}
@@ -2089,7 +2202,7 @@ function Tracker({ session, online, onSignOut }) {
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
               <div style={{ minWidth: 0 }}>
-                <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Maalaussuunnittelija</div>
+                <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Paint planner</div>
                 <div className="display" style={{ fontSize: 17, color: "var(--text)", marginTop: 3 }}>
                   {agentUnit.count} × {agentUnit.unit}
                 </div>
@@ -2107,18 +2220,16 @@ function Tracker({ session, online, onSignOut }) {
                   value={agentBrief}
                   onChange={e => setAgentBrief(e.target.value)}
                   rows={3}
-                  placeholder="Kuvaile erä: värit, pinnat, illan pituus. Esim. &quot;siniset panssarit, kultaiset koristeet, kivijalustat, 60 min iltaisin&quot;"
+                  placeholder="Describe the batch: colours, surfaces, evening length. E.g. &quot;blue armour, gold trim, stone bases, 60 min evenings&quot;"
                   className="field"
                   style={{ resize: "vertical", lineHeight: 1.5, fontSize: 14 }}
                 />
                 <p className="hint">
-                  Agentti tarkistaa maalivarastosi, hakee reseptit pinnoittain ja jakaa työn maalausiltoihin.
-                  Se käyttää vain maaleja jotka omistat.
+                  The planner checks your paint collection, looks up recipes per surface and splits the work into painting evenings. It uses only paints you own.
                 </p>
                 {inventory.length === 0 && (
                   <p style={{ fontSize: 12, color: "var(--warn)", margin: "8px 0 0", lineHeight: 1.5 }}>
-                    Maalivarastosi on tyhjä. Lisää maaleja asetuksista (⚙ → Maalivarasto),
-                    muuten agentti ei tiedä mitä sinulla on.
+                    Your paint collection is empty. Add paints from settings (⚙ → Paint collection), otherwise the planner cannot know what you have.
                   </p>
                 )}
               </>
@@ -2138,9 +2249,9 @@ function Tracker({ session, online, onSignOut }) {
                     )}
                     {ev.kind === "result" && (
                       <span style={{ color: "var(--text-4)", paddingLeft: 14 }}>
-                        {ev.output?.paints ? `→ ${ev.output.paints.length} maalia`
-                          : ev.output?.steps ? `→ ${ev.output.steps.length} vaihetta`
-                          : ev.output?.error ? `→ ${ev.output.error}` : "→ valmis"}
+                        {ev.output?.paints ? `→ ${ev.output.paints.length} paints`
+                          : ev.output?.steps ? `→ ${ev.output.steps.length} steps`
+                          : ev.output?.error ? `→ ${ev.output.error}` : "→ done"}
                       </span>
                     )}
                     {ev.kind === "text" && (
@@ -2149,7 +2260,7 @@ function Tracker({ session, online, onSignOut }) {
                   </div>
                 ))}
                 {agentBusy && (
-                  <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 2 }}>⏳ Suunnittelee…</div>
+                  <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 2 }}>⏳ Planning…</div>
                 )}
               </div>
             )}
@@ -2161,9 +2272,9 @@ function Tracker({ session, online, onSignOut }) {
             {!agentBusy && (
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                 <button onClick={runAgent} className="btn btn-gold" style={{ flex: 1 }}>
-                  {agentSteps.length ? "Yritä uudelleen" : "Suunnittele"}
+                  {agentSteps.length ? "Try again" : "Plan"}
                 </button>
-                <button onClick={() => setAgentUnit(null)} className="btn btn-quiet">Peru</button>
+                <button onClick={() => setAgentUnit(null)} className="btn btn-quiet">Cancel</button>
               </div>
             )}
           </div>
@@ -2187,7 +2298,7 @@ function Tracker({ session, online, onSignOut }) {
               width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto",
               borderColor: "var(--gold-deep)",
             }}>
-              <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Kirjaa kuvasta</div>
+              <div className="eyebrow" style={{ color: "var(--gold-dim)" }}>Log from photo</div>
               <div className="display" style={{ fontSize: 17, color: "var(--text)", marginTop: 3 }}>
                 {recog.unit}
               </div>
@@ -2200,13 +2311,13 @@ function Tracker({ session, online, onSignOut }) {
                   borderRadius: "var(--r2)", padding: "12px 13px",
                 }}>
                   <div className="eyebrow" style={{ color: "var(--warn)", marginBottom: 6 }}>
-                    Tarkistus tarpeen
+                    Needs checking
                   </div>
                   <p style={{ fontSize: 13.5, color: "var(--text)", margin: "0 0 4px", lineHeight: 1.5 }}>
                     {recog.ask.question}
                   </p>
                   <p className="hint" style={{ margin: "0 0 12px" }}>
-                    Katso miniatyyriä kädessäsi — kuvasta tätä ei voi päätellä luotettavasti.
+                    Look at the miniature in your hand — this cannot be judged reliably from a photo.
                   </p>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {recog.ask.options.map(opt => (
@@ -2223,7 +2334,7 @@ function Tracker({ session, online, onSignOut }) {
                   </div>
                   <button className="btn-ghost" style={{ marginTop: 10 }}
                     onClick={() => setRecog(null)}>
-                    Peru — merkitsen käsin
+                    Cancel — I will mark it manually
                   </button>
                 </div>
               )}
@@ -2246,14 +2357,13 @@ function Tracker({ session, online, onSignOut }) {
 
               {recog.overflow && (
                 <p style={{ fontSize: 12, color: "var(--warn)", margin: "0 0 10px", lineHeight: 1.5 }}>
-                  Kuvassa näyttää olevan enemmän kuin {recog.total} miniä — onko siinä useampi yksikkö?
-                  Tarkista määrä alta.
+                  The photo seems to show more than {recog.total} models — is there more than one unit in it? Check the count below.
                 </p>
               )}
 
               {/* määrä: mallin arvio on vain oletusarvo */}
               <label style={{ display: "block", fontSize: 12.5, color: "var(--text-2)", marginBottom: 5 }}>
-                Montako miniä siirtyy tähän vaiheeseen?
+                How many models move to this stage?
               </label>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <input type="number" min="1" max={max} value={recog.count}
@@ -2261,11 +2371,11 @@ function Tracker({ session, online, onSignOut }) {
                   className="field" style={{ width: 78, flexShrink: 0 }} />
                 <button className="btn btn-quiet btn-sm"
                   onClick={() => setRecog(r => ({ ...r, count: max }))}>
-                  Kaikki ({max})
+                  All ({max})
                 </button>
               </div>
               <p className="hint" style={{ marginBottom: 12 }}>
-                Tai napauta suoraan minejä alta — ne jotka siirtyvät näkyvät korostettuina.
+                Or tap the models below — the ones that will move are highlighted.
               </p>
 
               {/* minirivi: korjaus ja hyväksyntä ovat sama ele */}
@@ -2280,7 +2390,7 @@ function Tracker({ session, online, onSignOut }) {
                   return (
                     <button key={i}
                       className={"chip chip-" + (selected ? recog.stage : v)}
-                      title={eligible ? `#${i + 1}: ${STAGES[v].name}` : `#${i + 1}: jo ${STAGES[v].name}`}
+                      title={eligible ? `#${i + 1}: ${STAGES[v].name}` : `#${i + 1}: already ${STAGES[v].name}`}
                       onClick={() => {
                         if (!eligible) return;
                         const pos = order.indexOf(i);
@@ -2301,12 +2411,12 @@ function Tracker({ session, online, onSignOut }) {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button className="btn btn-gold" style={{ flex: "1 1 150px" }}
                   onClick={() => applyRecognition(true)}>
-                  Kirjaa ja tallenna kuva
+                  Log and save photo
                 </button>
                 <button className="btn btn-quiet" onClick={() => applyRecognition(false)}>
-                  Vain kirjaus
+                  Log only
                 </button>
-                <button className="btn btn-quiet" onClick={() => setRecog(null)}>Peru</button>
+                <button className="btn btn-quiet" onClick={() => setRecog(null)}>Cancel</button>
               </div>
               </>)}
             </div>
@@ -2331,7 +2441,7 @@ function Tracker({ session, online, onSignOut }) {
             padding: "var(--s4x)", cursor: "zoom-out",
           }}>
           {photoUrls[lightbox.path] && (
-            <img src={photoUrls[lightbox.path]} alt={`${lightbox.unit} maalattuna`}
+            <img src={photoUrls[lightbox.path]} alt={`${lightbox.unit} painted`}
               onClick={e => e.stopPropagation()}
               style={{
                 maxWidth: "100%", maxHeight: "72vh", objectFit: "contain",
@@ -2343,14 +2453,14 @@ function Tracker({ session, online, onSignOut }) {
             style={{ textAlign: "center", marginTop: "var(--s4x)", cursor: "default" }}>
             <div className="display" style={{ fontSize: 18, color: "var(--gold)" }}>{lightbox.unit}</div>
             <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>
-              {lightbox.product} · maalattu {fiDate(new Date(lightbox.at))}{new Date(lightbox.at).getFullYear()}
+              {lightbox.product} · painted {fmtDate(new Date(lightbox.at))}{new Date(lightbox.at).getFullYear()}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: "var(--s4x)" }}>
-              <button className="btn btn-quiet btn-sm" onClick={() => setLightbox(null)}>Sulje</button>
+              <button className="btn btn-quiet btn-sm" onClick={() => setLightbox(null)}>Close</button>
               <button className="btn btn-quiet btn-sm"
                 style={{ color: "var(--err)" }}
                 onClick={() => removePhoto(lightbox.pid, lightbox.uid, lightbox.path)}>
-                Poista kuva
+                Delete photo
               </button>
             </div>
           </div>
@@ -2371,14 +2481,14 @@ function Tracker({ session, online, onSignOut }) {
             <span style={{ fontSize: 14, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileName}</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            <button onClick={() => setSettingsOpen(v => !v)} aria-label="Asetukset" style={{
+            <button onClick={() => setSettingsOpen(v => !v)} aria-label="Settings" style={{
               background: settingsOpen ? "var(--line-soft)" : "none", border: "1px solid var(--line-soft)", borderRadius: "var(--r2)",
               color: "var(--gold-dim)", fontSize: 15, padding: "5px 10px", cursor: "pointer",
             }}>⚙</button>
             <button onClick={onSignOut} style={{
               background: "none", border: "1px solid var(--line-soft)", borderRadius: "var(--r2)",
               color: "var(--text-3)", fontSize: 13, padding: "5px 10px", cursor: "pointer",
-            }}>Kirjaudu ulos</button>
+            }}>Sign out</button>
           </div>
         </div>
 
@@ -2388,11 +2498,11 @@ function Tracker({ session, online, onSignOut }) {
             fontSize: "clamp(26px, 8vw, 36px)", fontWeight: 600, color: "var(--text)",
             margin: 0, lineHeight: 1.05, letterSpacing: ".02em", textTransform: "uppercase",
           }}>
-            Maalaus<span style={{ color: "var(--gold)" }}>urakka</span>
+            Paint<span style={{ color: "var(--gold)" }}>log</span>
           </h1>
           {stats.total > 0 && (
             <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 5 }}>
-              {stats.total} miniä · {grouped.length} {grouped.length === 1 ? "pelijärjestelmä" : "pelijärjestelmää"}
+              {stats.total} models · {grouped.length} {grouped.length === 1 ? "game system" : "game systems"}
             </div>
           )}
         </header>
@@ -2401,19 +2511,19 @@ function Tracker({ session, online, onSignOut }) {
         {/* ---------- ASETUKSET ---------- */}
         {settingsOpen && (
           <section className="rise panel" style={{ borderColor: "var(--line)", marginBottom: 16 }}>
-            <h2 style={{ fontFamily: "var(--display)", fontSize: 15, margin: "0 0 10px", color: "var(--gold-mid)" }}>Profiilin asetukset</h2>
-            <label style={{ fontSize: 13, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Profiilin nimi</label>
+            <h2 style={{ fontFamily: "var(--display)", fontSize: 15, margin: "0 0 10px", color: "var(--gold-mid)" }}>Profile settings</h2>
+            <label style={{ fontSize: 13, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Display name</label>
             <input value={draftName} onChange={e => setDraftName(e.target.value)} className="field" style={{ marginBottom: 12 }} />
-            <label style={{ fontSize: 13, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Anthropic API -avain (tuotehakua varten)</label>
+            <label style={{ fontSize: 13, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Anthropic API key (for product search)</label>
             <input type="password" value={draftKey} onChange={e => setDraftKey(e.target.value)} placeholder="sk-ant-…" className="field" />
             <p style={{ fontSize: 12, color: "var(--text-3)", margin: "6px 0 10px", lineHeight: 1.5 }}>
-              Avain on profiilikohtainen ja tallentuu Supabaseen omalle riviellesi. Ilman avainta haku ei toimi, mutta käsinlisäys ja seuranta toimivat normaalisti.
+              The key is per profile and stored on your own row in Supabase. Without it search will not work, but manual entry and tracking work normally.
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={saveSettings} style={{ background: "var(--line-soft)", border: "1px solid var(--surface-3)", borderRadius: "var(--r2)", padding: "9px 14px", color: "var(--gold)", fontWeight: 700, cursor: "pointer" }}>
-                Tallenna
+                Save
               </button>
-              {settingsMsg && <span style={{ fontSize: 13, color: settingsMsg === "Tallennettu." ? "var(--ok)" : "var(--err)" }}>{settingsMsg}</span>}
+              {settingsMsg && <span style={{ fontSize: 13, color: settingsMsg === "Saved." ? "var(--ok)" : "var(--err)" }}>{settingsMsg}</span>}
             </div>
 
             {/* ---- maalivarasto ---- */}
@@ -2422,17 +2532,17 @@ function Tracker({ session, online, onSignOut }) {
                 className="acc-head" style={{ padding: "2px 0" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <Chevron open={invOpen} />
-                  <span style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 700 }}>Maalivarasto</span>
+                  <span style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 700 }}>Paint collection</span>
                 </span>
                 <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-                  {inventory.length} {inventory.length === 1 ? "maali" : "maalia"}
+                  {inventory.length} {inventory.length === 1 ? "paint" : "paints"}
                 </span>
               </button>
 
               {invOpen && (
                 <div className="acc-body" style={{ marginTop: 10 }}>
                   <input value={invQuery} onChange={e => searchCatalogue(e.target.value)}
-                    placeholder="Lisää maali — osittainen nimi riittää, esim. 'agr'" className="field" />
+                    placeholder="Add a paint — a partial name works, e.g. 'agr'" className="field" />
 
                   {catalogue.length > 0 && (
                     <div className="panel flush" style={{ marginTop: 6, overflow: "hidden" }}>
@@ -2442,7 +2552,7 @@ function Tracker({ session, online, onSignOut }) {
                           <span style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ display: "block", fontSize: 13.5, color: "var(--text)" }}>{c.name}</span>
                             <span style={{ fontSize: 11, color: "var(--text-3)" }}>
-                              {c.range}{c.metallic ? " · metalli" : ""}
+                              {c.range}{c.metallic ? " · metallic" : ""}
                             </span>
                           </span>
                           <span style={{ color: "var(--gold)", fontSize: 16, flexShrink: 0 }}>+</span>
@@ -2452,8 +2562,7 @@ function Tracker({ session, online, onSignOut }) {
                   )}
 
                   <p className="hint">
-                    Napauta maalin tilaa vaihtaaksesi sitä: täysi → puolikas → vähissä → loppu.
-                    Neljä porrasta riittää, koska purkkia katsomalla ei enempää näe.
+                    Tap a stock level to change it: full → half → low → empty. Four steps are enough, because that is all you can judge by looking at the pot.
                   </p>
 
                   {inventory.length > 0 && (
@@ -2466,15 +2575,15 @@ function Tracker({ session, online, onSignOut }) {
                             <span style={{ color: "var(--text-4)", fontSize: 11 }}> · {pt.range}</span>
                           </span>
                           <button onClick={() => cycleStock(pt.name)}
-                            title="Vaihda varastotasoa"
+                            title="Change stock level"
                             style={{
                               background: "var(--surface-2)", border: `1px solid ${STOCK_COLOR[pt.stock]}`,
                               borderRadius: "var(--rf)", padding: "2px 10px", fontSize: 11,
                               color: STOCK_COLOR[pt.stock], cursor: "pointer", flexShrink: 0, minWidth: 74,
                             }}>
-                            {STOCK_FI[pt.stock]}
+                            {STOCK_LABEL[pt.stock]}
                           </button>
-                          <button onClick={() => removeFromInventory(pt.name)} aria-label="Poista maali"
+                          <button onClick={() => removeFromInventory(pt.name)} aria-label="Remove paint"
                             style={{ background: "none", border: "none", color: "var(--text-4)", fontSize: 15, cursor: "pointer", padding: "2px 4px", flexShrink: 0 }}>×</button>
                         </div>
                       ))}
@@ -2486,32 +2595,30 @@ function Tracker({ session, online, onSignOut }) {
 
             {/* ---- muistutukset ---- */}
             <div style={{ borderTop: "1px solid var(--line-soft)", marginTop: 14, paddingTop: 12 }}>
-              <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 6, fontWeight: 700 }}>Muistutukset</div>
+              <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 6, fontWeight: 700 }}>Reminders</div>
               <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 10px", lineHeight: 1.5 }}>
-                Muistutus tulee eri Warhammer-hahmolta joka kerta — lempeästä primarkista
-                kaaosjumalaan sen mukaan, kuinka kauan urakka on ollut hiljaa. Palvelin lähettää
-                sen illalla myös silloin kun sovellus on kiinni
-                {VAPID_PUBLIC_KEY ? "" : " (taustapush ei ole käytössä tässä asennuksessa)"}.
-                iOS vaatii, että sovellus on lisätty kotinäytölle.
+                Each reminder comes from a different Warhammer character — from a kindly primarch to a Chaos god, depending on how long the backlog has been quiet. The server sends it in the evening even when the app is closed
+                {VAPID_PUBLIC_KEY ? "" : " (background push is not configured in this install)"}.
+                iOS requires the app to be added to the home screen.
               </p>
               {notifyPerm === "granted" ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, color: "var(--ok)" }}>✓ Muistutukset käytössä</span>
+                  <span style={{ fontSize: 13, color: "var(--ok)" }}>✓ Reminders enabled</span>
                   <button onClick={testNotification} style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r2)", padding: "7px 12px", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
-                    Näytä esimerkki
+                    Show an example
                   </button>
                 </div>
               ) : notifyPerm === "denied" ? (
                 <p style={{ fontSize: 12, color: "var(--err)", margin: 0, lineHeight: 1.5 }}>
-                  Ilmoitukset on estetty selaimen asetuksissa. Salli ne sivun asetuksista (lukkokuvake osoiterivillä) ottaaksesi muistutukset käyttöön.
+                  Notifications are blocked in your browser settings. Allow them from the site settings (padlock icon in the address bar) to enable reminders.
                 </p>
               ) : notifyPerm === "unsupported" ? (
                 <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
-                  Tämä selain ei tue ilmoituksia.
+                  This browser does not support notifications.
                 </p>
               ) : (
                 <button onClick={enableNotifications} style={{ background: "linear-gradient(135deg,var(--gold-deep),var(--gold-dim))", border: "1px solid var(--gold)", borderRadius: "var(--r2)", padding: "9px 14px", color: "#1A1408", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  Ota muistutukset käyttöön
+                  Enable reminders
                 </button>
               )}
             </div>
@@ -2525,13 +2632,13 @@ function Tracker({ session, online, onSignOut }) {
             borderRadius: "var(--r3)", padding: "var(--s4x)", marginBottom: 16,
           }}>
             <div style={{ fontSize: 11, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 8 }}>
-              Seuraava siirto
+              Next move
             </div>
             <div style={{ fontFamily: "var(--display)", fontSize: 19, color: "var(--text)", fontWeight: 700, lineHeight: 1.3 }}>
               {suggestion.n} × {suggestion.unit}
             </div>
             <div style={{ fontSize: 14, color: "var(--text-2)", marginTop: 3 }}>
-              odottaa {STAGES[suggestion.stage].verb}
+              awaits {STAGES[suggestion.stage].verb}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{suggestion.product}</div>
             {(() => {
@@ -2545,7 +2652,7 @@ function Tracker({ session, online, onSignOut }) {
                   borderRadius: "var(--r2)", padding: "8px 10px",
                 }}>
                   <div className="eyebrow" style={{ color: "var(--gold-dim)", marginBottom: 4 }}>
-                    🧭 Suunnitelmasta
+                    🧭 From your plan
                   </div>
                   <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
                     <strong style={{ color: "var(--text)" }}>{first.name}</strong>
@@ -2556,13 +2663,13 @@ function Tracker({ session, online, onSignOut }) {
             })()}
             <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
               <button onClick={() => goToProduct(suggestion.pid)} className="btn btn-gold" style={{ padding: "9px 16px", fontSize: 14 }}>
-                Näytä
+                Show
               </button>
               {suggestions.length > 1 && (
                 <button onClick={() => setSuggIdx(i => i + 1)} style={{
                   background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r2)",
                   padding: "9px 14px", color: "var(--text-2)", fontSize: 14, cursor: "pointer",
-                }}>Ehdota toinen</button>
+                }}>Suggest another</button>
               )}
             </div>
           </section>
@@ -2577,33 +2684,33 @@ function Tracker({ session, online, onSignOut }) {
                 <div className="stat-val" style={{ color: momentum.streak ? "var(--gold)" : "var(--text-4)" }}>
                   {momentum.streak > 0 && <span style={{ fontSize: 17 }}>🔥 </span>}{momentum.streak}
                 </div>
-                <div className="stat-label">päivän putki</div>
+                <div className="stat-label">day streak</div>
               </div>
               {/* tällä viikolla */}
               <div className="stat">
                 <div className="stat-val" style={{ color: momentum.thisWeek ? "var(--gold-mid)" : "var(--text-4)" }}>
                   {momentum.thisWeek}
                 </div>
-                <div className="stat-label">tällä viikolla</div>
+                <div className="stat-label">this week</div>
               </div>
               {/* viime viikolla */}
               <div className="stat">
                 <div className="stat-val" style={{ color: "var(--text-3)" }}>{momentum.lastWeek}</div>
-                <div className="stat-label">viime viikolla</div>
+                <div className="stat-label">last week</div>
               </div>
             </div>
 
             {/* putken tila / viikkovertailu */}
             <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 12px", fontStyle: "italic" }}>
               {momentum.streak > 0 && !momentum.activeToday
-                ? `Putki on ${momentum.streak} päivää — yksi askel tänään pitää sen elossa.`
+                ? `Your streak is ${momentum.streak} days - one step today keeps it alive.`
                 : momentum.activeToday && momentum.today > 0
-                ? `Tänään ${momentum.today} askelta. Putki jatkuu.`
+                ? `${momentum.today} steps today. The streak continues.`
                 : momentum.lastWeek > 0 && momentum.thisWeek === 0
-                ? `Viime viikolla ${momentum.lastWeek} askelta. Tämä viikko odottaa avaustaan.`
+                ? `${momentum.lastWeek} steps last week. This week is still waiting to start.`
                 : weekDelta > 0
-                ? `${weekDelta} askelta enemmän kuin viime viikolla samaan aikaan.`
-                : "Yksikin mini eteenpäin aloittaa putken."}
+                ? `${weekDelta} more steps than at this point last week.`
+                : "A single model forward starts the streak."}
             </p>
 
             {nextAch && (
@@ -2615,7 +2722,7 @@ function Tracker({ session, online, onSignOut }) {
                 }}>
                 <span style={{ fontSize: 20, flexShrink: 0, filter: "grayscale(1)", opacity: 0.7 }}>{nextAch.icon}</span>
                 <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Seuraava saavutus</span>
+                  <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Next achievement</span>
                   <span style={{ display: "block", fontSize: 13, color: "var(--text-2)", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {nextAch.name}
                   </span>
@@ -2633,12 +2740,12 @@ function Tracker({ session, online, onSignOut }) {
         <section className="panel" style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
             <span style={{ fontFamily: "var(--display)", fontSize: 30, color: "var(--gold)", fontWeight: 700 }}>{stats.pct}%</span>
-            <span style={{ fontSize: 14, color: "var(--text-2)" }}>{stats.done} / {stats.total} miniä valmiina</span>
+            <span style={{ fontSize: 14, color: "var(--text-2)" }}>{stats.done} / {stats.total} models finished</span>
           </div>
           <StageBar perStage={stats.perStage} total={stats.total} showCounts />
           {stats.total > 0 && (
             <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--text-3)" }}>
-              Maalaamatta: {stats.total - stats.done} miniä
+              Unpainted: {stats.total - stats.done} models
             </p>
           )}
         </section>
@@ -2647,16 +2754,16 @@ function Tracker({ session, online, onSignOut }) {
         <section style={{ marginBottom: 16 }}>
           {!addOpen && (
             <button className="add-trigger" onClick={() => setAddOpen(true)} aria-expanded={false}>
-              <span className="plus">+</span> Lisää urakkaan
+              <span className="plus">+</span> Add to backlog
             </button>
           )}
 
           {addOpen && (
             <div className="rise panel" style={{ borderColor: "var(--gold-deep)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
-                <span className="eyebrow" style={{ color: "var(--gold-dim)" }}>Lisää urakkaan</span>
+                <span className="eyebrow" style={{ color: "var(--gold-dim)" }}>Add to backlog</span>
                 <button onClick={() => { setAddOpen(false); setMatches(null); setSearchError(null); }}
-                  aria-label="Sulje" title="Sulje"
+                  aria-label="Close" title="Close"
                   style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 2 }}>
                   ×
                 </button>
@@ -2667,12 +2774,12 @@ function Tracker({ session, online, onSignOut }) {
                 <button role="tab" aria-selected={addTab === "search"}
                   className={"tab" + (addTab === "search" ? " is-active" : "")}
                   onClick={() => setAddTab("search")}>
-                  🔍 Hae tuote
+                  🔍 Search
                 </button>
                 <button role="tab" aria-selected={addTab === "manual"}
                   className={"tab" + (addTab === "manual" ? " is-active" : "")}
                   onClick={() => setAddTab("manual")}>
-                  ✍️ Syötä käsin
+                  ✍️ Enter manually
                 </button>
               </div>
 
@@ -2681,16 +2788,15 @@ function Tracker({ session, online, onSignOut }) {
                 <div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
-                      placeholder="Tuotteen tai armeijan nimi…" autoFocus
+                      placeholder="Product or army name…" autoFocus
                       className="field" style={{ flex: 1 }} />
                     <button onClick={doSearch} disabled={searching || !query.trim()}
                       className="btn btn-gold" style={{ flexShrink: 0 }}>
-                      {searching ? "Haetaan…" : "Hae"}
+                      {searching ? "Searching…" : "Search"}
                     </button>
                   </div>
                   <p className="hint">
-                    Osittainen nimi riittää. Sovellus etsii täsmäävät Games Workshop -tuotteet
-                    ja hakee valitsemiesi laatikoiden sisällöt.
+                    A partial name is enough. The app finds matching Games Workshop products and fetches the contents of the boxes you choose.
                   </p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                     {["High Elf", "Combat Patrol", "Skaven", "Space Marines", "Kill Team"].map(ex => (
@@ -2704,29 +2810,29 @@ function Tracker({ session, online, onSignOut }) {
               {addTab === "manual" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <input value={manual.product} onChange={e => setManual({ ...manual, product: e.target.value })}
-                    placeholder="Tuotteen nimi" autoFocus className="field" />
+                    placeholder="Product name" autoFocus className="field" />
                   <select value={manual.system} onChange={e => setManual({ ...manual, system: e.target.value })} className="field">
                     {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                   <input value={manual.faction} onChange={e => setManual({ ...manual, faction: e.target.value })}
-                    list="fac-manual" placeholder="Rotu / armeija, esim. High Elves (valinnainen)" className="field" />
+                    list="fac-manual" placeholder="Faction, e.g. High Elves (optional)" className="field" />
                   <datalist id="fac-manual">
                     {[...(factionsBySystem.get(manual.system) || [])].map(f => <option key={f} value={f} />)}
                   </datalist>
 
-                  <div className="eyebrow" style={{ marginTop: 4 }}>Miniatyyrit</div>
+                  <div className="eyebrow" style={{ marginTop: 4 }}>Miniatures</div>
 
                   {manual.units.map((u, i) => (
                     <div key={u.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <input value={u.name} onChange={e => setManualRow(u.id, { name: e.target.value })}
                         onKeyDown={e => { if (e.key === "Enter" && i === manual.units.length - 1) addManualRow(); }}
-                        placeholder={i === 0 ? "Miniatyyrin nimi, esim. Clanrats" : "Miniatyyrin nimi"}
+                        placeholder={i === 0 ? "Miniature name, e.g. Clanrats" : "Miniature name"}
                         className="field" style={{ flex: 1 }} />
-                      <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
+                      <input type="number" min="1" max="200" value={u.count} aria-label="Quantity"
                         onChange={e => setManualRow(u.id, { count: e.target.value })}
                         className="field" style={{ width: 68, flexShrink: 0 }} />
                       <button onClick={() => removeManualRow(u.id)} disabled={manual.units.length === 1}
-                        aria-label="Poista rivi" title="Poista rivi" style={{
+                        aria-label="Remove row" title="Remove row" style={{
                           background: "none", border: "none", flexShrink: 0, padding: "6px 4px",
                           color: manual.units.length === 1 ? "var(--line-soft)" : "var(--text-3)",
                           fontSize: 18, lineHeight: 1, cursor: manual.units.length === 1 ? "default" : "pointer",
@@ -2736,12 +2842,12 @@ function Tracker({ session, online, onSignOut }) {
 
                   <button onClick={addManualRow} className="btn-ghost"
                     style={{ alignSelf: "flex-start", textDecoration: "none", border: "1px dashed var(--line)", borderRadius: "var(--r2)", padding: "7px 12px", fontSize: 13 }}>
-                    + Lisää miniatyyri
+                    + Add miniature
                   </button>
 
                   <button onClick={addManual} disabled={!manualValid}
                     className={manualValid ? "btn btn-gold" : "btn btn-quiet"} style={{ marginTop: 4 }}>
-                    {manualValid ? `Lisää urakkaan (${manualTotal} miniä)` : "Lisää urakkaan"}
+                    {manualValid ? `Add to backlog (${manualTotal} models)` : "Add to backlog"}
                   </button>
                 </div>
               )}
@@ -2752,7 +2858,7 @@ function Tracker({ session, online, onSignOut }) {
 
           {failed.length > 0 && (
             <p style={{ color: "var(--warn)", fontSize: 13, margin: "8px 0 0", lineHeight: 1.5 }}>
-              Sisältöä ei saatu selville: {failed.join(", ")}. Voit lisätä nämä käsin.
+              Contents could not be determined: {failed.join(", ")}. You can add these manually.
             </p>
           )}
 
@@ -2760,7 +2866,7 @@ function Tracker({ session, online, onSignOut }) {
           {batch && (
             <div className="rise panel" style={{ marginTop: 10 }}>
               <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 8 }}>
-                ⏳ Haetaan sisältöjä… {batch.done + 1} / {batch.total}
+                ⏳ Fetching contents… {batch.done + 1} / {batch.total}
               </div>
               <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 8 }}>{batch.name}</div>
               <div style={{ height: 6, borderRadius: "var(--r1)", background: "var(--surface-2)", overflow: "hidden" }}>
@@ -2776,9 +2882,9 @@ function Tracker({ session, online, onSignOut }) {
           {matches && !batch && (
             <div className="rise panel flush" style={{ marginTop: 10, overflow: "hidden" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--line-soft)" }}>
-                <span style={{ fontSize: 13, color: "var(--text-2)" }}>{matches.length} tuotetta — valitse lisättävät:</span>
+                <span style={{ fontSize: 13, color: "var(--text-2)" }}>{matches.length} products — choose what to add:</span>
                 <button onClick={() => setSelected(allSelected ? [] : matches.map(m => m.id))} className="btn-ghost" style={{ fontSize: 12 }}>
-                  {allSelected ? "Tyhjennä" : "Valitse kaikki"}
+                  {allSelected ? "Clear" : "Select all"}
                 </button>
               </div>
 
@@ -2799,9 +2905,9 @@ function Tracker({ session, online, onSignOut }) {
               <div style={{ display: "flex", gap: 8, padding: 10, background: "var(--surface-2)" }}>
                 <button onClick={fetchSelected} disabled={!selected.length}
                   className="btn btn-gold" style={{ flex: 1 }}>
-                  {selected.length ? `Hae sisällöt (${selected.length})` : "Valitse vähintään yksi"}
+                  {selected.length ? `Fetch contents (${selected.length})` : "Select at least one"}
                 </button>
-                <button onClick={() => { setMatches(null); setSelected([]); }} className="btn btn-quiet">Sulje</button>
+                <button onClick={() => { setMatches(null); setSelected([]); }} className="btn btn-quiet">Close</button>
               </div>
             </div>
           )}
@@ -2811,7 +2917,7 @@ function Tracker({ session, online, onSignOut }) {
             <div className="rise" style={{ background: "var(--surface-2)", border: "1px solid var(--gold-deep)", borderRadius: "var(--r3)", padding: "var(--s4x)", marginTop: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
                 <span style={{ fontSize: 11, color: "var(--gold-dim)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
-                  Tarkista määrät
+                  Check the counts
                 </span>
                 {queue.length > 1 && (
                   <span style={{ fontSize: 12, color: "var(--text-3)" }}>{queueIdx + 1} / {queue.length}</span>
@@ -2831,8 +2937,8 @@ function Tracker({ session, online, onSignOut }) {
 
               <div style={{ fontFamily: "var(--display)", fontSize: 17, color: "var(--text)", fontWeight: 700 }}>{current.product}</div>
               <div style={{ fontSize: 13, color: "var(--gold-dim)", marginBottom: 8 }}>{current.system}</div>
-              <input value={current.faction || ""} list="fac-queue" placeholder="Rotu / armeija"
-                aria-label="Rotu tai armeija"
+              <input value={current.faction || ""} list="fac-queue" placeholder="Faction"
+                aria-label="Faction"
                 onChange={e => setQueue(q => q.map((it, i) => i !== queueIdx ? it : { ...it, faction: e.target.value }))}
                 className="field" style={{ padding: "7px 10px", fontSize: 13, marginBottom: 10 }} />
               <datalist id="fac-queue">
@@ -2841,13 +2947,13 @@ function Tracker({ session, online, onSignOut }) {
 
               {current.units.map(u => (
                 <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <input type="number" min="1" max="200" value={u.count} aria-label="Määrä"
+                  <input type="number" min="1" max="200" value={u.count} aria-label="Quantity"
                     onChange={e => patchQueueUnit(u.id, { count: e.target.value })}
                     className="field" style={{ width: 62, padding: "7px 8px", fontSize: 14, flexShrink: 0 }} />
-                  <input value={u.name} aria-label="Miniatyyrin nimi"
+                  <input value={u.name} aria-label="Miniature name"
                     onChange={e => patchQueueUnit(u.id, { name: e.target.value })}
                     className="field" style={{ flex: 1, padding: "7px 10px", fontSize: 14 }} />
-                  <button onClick={() => removeQueueUnit(u.id)} aria-label="Poista rivi" title="Poista rivi" style={{
+                  <button onClick={() => removeQueueUnit(u.id)} aria-label="Remove row" title="Remove row" style={{
                     background: "none", border: "none", color: "var(--text-3)", fontSize: 18,
                     lineHeight: 1, cursor: "pointer", padding: "6px 4px", flexShrink: 0,
                   }}>×</button>
@@ -2855,26 +2961,26 @@ function Tracker({ session, online, onSignOut }) {
               ))}
 
               <button onClick={addQueueUnit} className="btn-ghost" style={{ textDecoration: "none", border: "1px dashed var(--line)", borderRadius: "var(--r2)", padding: "6px 10px", fontSize: 12, marginTop: 2 }}>
-                + Lisää rivi
+                + Add row
               </button>
 
               <p style={{ fontSize: 12, color: "var(--text-2)", margin: "10px 0", lineHeight: 1.5 }}>
-                Vertaa laatikon kylkeen — tekoälyhaku voi erehtyä. Korjaa määrät tai poista ylimääräiset rivit ennen lisäystä.
+                Compare with the side of the box — AI search can be wrong. Fix the counts or remove extra rows before adding.
               </p>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={confirmCurrent} className="btn btn-gold" style={{ flex: "1 1 160px" }}>
-                  Lisää urakkaan ({current.units.reduce((a, u) => a + clampCount(u.count), 0)} miniä)
+                  Add to backlog ({current.units.reduce((a, u) => a + clampCount(u.count), 0)} models)
                 </button>
                 <button onClick={advance} style={{
                   background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r2)",
                   padding: "10px 14px", color: "var(--text-2)", cursor: "pointer",
-                }}>Ohita</button>
+                }}>Skip</button>
                 {queue.length > 1 && (
                   <button onClick={() => { setQueue([]); setQueueIdx(0); }} style={{
                     background: "none", border: "none", color: "var(--text-3)", fontSize: 12,
                     cursor: "pointer", textDecoration: "underline",
-                  }}>Peru loput</button>
+                  }}>Cancel the rest</button>
                 )}
               </div>
             </div>
@@ -2885,14 +2991,14 @@ function Tracker({ session, online, onSignOut }) {
         {stats.total > 0 && (
           <section style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Sivellin — valitse mitä napautus tekee minille
+              Brush — choose what a tap does to a model
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               <button onClick={() => setBrush(null)} style={{
                 background: brush === null ? "var(--line-soft)" : "var(--surface)",
                 border: `1px solid ${brush === null ? "var(--gold)" : "var(--line-soft)"}`, borderRadius: "var(--r2)", padding: "7px 10px",
                 color: brush === null ? "var(--gold)" : "var(--text-2)", fontSize: 13, fontWeight: 700, cursor: "pointer",
-              }}>→ Seuraava vaihe</button>
+              }}>→ Next stage</button>
               {STAGES.map(st => (
                 <button key={st.key} onClick={() => setBrush(st.key)} style={{
                   background: brush === st.key ? st.bg : "var(--surface)",
@@ -2909,8 +3015,8 @@ function Tracker({ session, online, onSignOut }) {
           <div style={{ textAlign: "center", padding: "var(--s7x) var(--s5x)", color: "var(--text-3)" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🎨</div>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6 }}>
-              Urakka on tyhjä.<br />
-              Lisää ensimmäinen laatikko yltä — hae nimellä tai syötä käsin.
+              Your backlog is empty.<br />
+              Add your first box above — search by name or enter it manually.
             </p>
           </div>
         )}
@@ -2918,7 +3024,7 @@ function Tracker({ session, online, onSignOut }) {
         {/* ---------- TUOTELISTAN TYÖKALUT ---------- */}
         {products.length > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
-            <span className="eyebrow">Kokoelma</span>
+            <span className="eyebrow">Collection</span>
             <button
               onClick={() => {
                 const anyOpen = openCats.length || openFacs.length || openProds.length;
@@ -2930,7 +3036,7 @@ function Tracker({ session, online, onSignOut }) {
                 }
               }}
               className="btn btn-quiet btn-sm">
-              {(openCats.length || openFacs.length || openProds.length) ? "Sulje kaikki" : "Avaa kaikki"}
+              {(openCats.length || openFacs.length || openProds.length) ? "Collapse all" : "Expand all"}
             </button>
           </div>
         )}
@@ -2952,10 +3058,10 @@ function Tracker({ session, online, onSignOut }) {
                     {system}
                   </span>
                   <span style={{ fontSize: 12, color: "var(--text-3)", flexShrink: 0 }}>
-                    ({factions.length} {factions.length === 1 ? "rotu" : "rotua"})
+                    ({factions.length} {factions.length === 1 ? "faction" : "factions"})
                   </span>
                 </span>
-                <span style={{ fontSize: 13, color: "var(--text-2)", flexShrink: 0 }}>{c.pct}% · {c.total} miniä</span>
+                <span style={{ fontSize: 13, color: "var(--text-2)", flexShrink: 0 }}>{c.pct}% · {c.total} models</span>
               </button>
 
               {cOpen && factions.map(({ key, name, items }) => {
@@ -3010,7 +3116,7 @@ function Tracker({ session, online, onSignOut }) {
                                   </span>
                                   <span style={{ textAlign: "right", flexShrink: 0 }}>
                                     <span style={{ display: "block", fontFamily: "var(--display)", fontSize: 19, fontWeight: 700, color: pDoneAll ? "var(--gold)" : "var(--text-2)", lineHeight: 1.1 }}>{t.pct}%</span>
-                                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{t.done}/{t.total} valmis</span>
+                                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{t.done}/{t.total} done</span>
                                   </span>
                                 </div>
                                 <div style={{ marginTop: 8 }}>
@@ -3041,7 +3147,7 @@ function Tracker({ session, online, onSignOut }) {
                                             </span>
                                             <button onClick={() => setAllInUnit(p.id, u.id)}
                                               style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--r1)", padding: "4px 8px", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
-                                              Sivele kaikki
+                                              Brush all
                                             </button>
                                           </div>
                                         )}
@@ -3063,34 +3169,34 @@ function Tracker({ session, online, onSignOut }) {
                                           {(u.photos || []).map(ph => (
                                             <button key={ph.p}
                                               onClick={() => setLightbox({ path: ph.p, unit: u.name, product: p.name, at: ph.t, pid: p.id, uid: u.id })}
-                                              title={`Maalattu ${fiDate(new Date(ph.t))}`}
+                                              title={`Painted ${fmtDate(new Date(ph.t))}`}
                                               style={{
                                                 width: 46, height: 46, padding: 0, cursor: "pointer",
                                                 borderRadius: "var(--r1)", overflow: "hidden",
                                                 border: "1px solid var(--gold-deep)", background: "var(--surface-2)",
                                               }}>
                                               {photoUrls[ph.p]
-                                                ? <img src={photoUrls[ph.p]} alt={`${u.name} maalattuna`}
+                                                ? <img src={photoUrls[ph.p]} alt={`${u.name} painted`}
                                                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                                                 : <span style={{ fontSize: 14, opacity: .5 }}>🖼️</span>}
                                             </button>
                                           ))}
                                           <label
-                                            title="Ota kuva ja kirjaa vaihe automaattisesti"
+                                            title="Take a photo and log the stage automatically"
                                             style={{
                                               display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                                               height: 46, padding: "0 11px",
                                               borderRadius: "var(--r1)", cursor: recogBusy === u.id ? "wait" : "pointer",
                                               border: "1px dashed var(--gold-deep)", color: "var(--gold-dim)", fontSize: 12,
                                             }}>
-                                            {recogBusy === u.id ? "⏳ Tunnistaa…" : "🔍 Kirjaa kuvasta"}
+                                            {recogBusy === u.id ? "⏳ Reading…" : "🔍 Log from photo"}
                                             <input type="file" accept="image/*" capture="environment"
                                               disabled={!!recogBusy}
                                               onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) recognizeFromPhoto(p, u, f); }}
                                               style={{ display: "none" }} />
                                           </label>
                                           <label
-                                            title="Lisää kuva tästä yksiköstä"
+                                            title="Add a photo of this unit"
                                             style={{
                                               display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                                               minWidth: 46, height: 46, padding: "0 10px",
@@ -3098,7 +3204,7 @@ function Tracker({ session, online, onSignOut }) {
                                               border: "1px dashed var(--line)", color: "var(--text-3)", fontSize: 12,
                                             }}>
                                             {uploading === u.id ? "…" : "📷"}
-                                            {!(u.photos || []).length && uploading !== u.id && <span>Lisää kuva</span>}
+                                            {!(u.photos || []).length && uploading !== u.id && <span>Add photo</span>}
                                             <input type="file" accept="image/*" capture="environment"
                                               disabled={uploading === u.id}
                                               onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addPhoto(p.id, u.id, f); }}
@@ -3126,7 +3232,7 @@ function Tracker({ session, online, onSignOut }) {
                                                     🧭 {plan.title}
                                                     {!open && (
                                                       <span style={{ color: "var(--text-4)" }}>
-                                                        — {Math.max(...(plan.steps || [{ session: 1 }]).map(x => x.session || 1))} iltaa
+                                                        — {Math.max(...(plan.steps || [{ session: 1 }]).map(x => x.session || 1))} evenings
                                                       </span>
                                                     )}
                                                   </button>
@@ -3138,7 +3244,7 @@ function Tracker({ session, online, onSignOut }) {
                                                       border: "1px dashed var(--line)", borderRadius: "var(--r2)",
                                                       padding: "5px 10px", cursor: "pointer", fontSize: 11.5, color: "var(--text-3)",
                                                     }}>
-                                                    🧭 Suunnittele maalaus
+                                                    🧭 Plan the painting
                                                   </button>
                                                 )}
                                               </div>
@@ -3154,7 +3260,7 @@ function Tracker({ session, online, onSignOut }) {
                                                   }, {})).map(([sess, steps]) => (
                                                     <div key={sess} style={{ marginBottom: 10 }}>
                                                       <div className="eyebrow" style={{ color: "var(--gold-dim)", marginBottom: 4 }}>
-                                                        Ilta {sess}
+                                                        Evening {sess}
                                                       </div>
                                                       {steps.map((st, i) => (
                                                         <div key={i} style={{ marginBottom: 6, paddingLeft: 2 }}>
@@ -3165,7 +3271,7 @@ function Tracker({ session, online, onSignOut }) {
                                                                 const inv = inventory.find(x => x.name === pn);
                                                                 const low = inv && (inv.stock === "low" || inv.stock === "empty");
                                                                 return (
-                                                                  <span key={pn} title={inv ? `Varastossa: ${STOCK_FI[inv.stock]}` : "Ei varastossa"}
+                                                                  <span key={pn} title={inv ? `In stock: ${STOCK_LABEL[inv.stock]}` : "Not in your collection"}
                                                                     style={{
                                                                       display: "inline-flex", alignItems: "center", gap: 5,
                                                                       fontSize: 11.5, padding: "2px 8px", borderRadius: "var(--rf)",
@@ -3190,10 +3296,10 @@ function Tracker({ session, online, onSignOut }) {
                                                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                                                     <button className="btn btn-quiet btn-sm"
                                                       onClick={() => { setAgentUnit({ pid: p.id, uid: u.id, unit: u.name, product: p.name, count: u.minis.length }); setAgentSteps([]); setAgentErr(null); }}>
-                                                      Suunnittele uudelleen
+                                                      Plan again
                                                     </button>
                                                     <button className="btn btn-quiet btn-sm" style={{ color: "var(--err)" }}
-                                                      onClick={() => deletePlan(u.id)}>Poista</button>
+                                                      onClick={() => deletePlan(u.id)}>Delete</button>
                                                   </div>
                                                 </div>
                                               )}
@@ -3216,13 +3322,13 @@ function Tracker({ session, online, onSignOut }) {
                                       color: editProds.includes(p.id) ? "var(--gold)" : "var(--text-3)",
                                       fontSize: 12, cursor: "pointer",
                                     }}>
-                                    {editProds.includes(p.id) ? "✓ Valmis muokkaamasta" : "✎ Muokkaa miniatyyrejä"}
+                                    {editProds.includes(p.id) ? "✓ Done editing" : "✎ Edit miniatures"}
                                   </button>
 
                                   {/* --- tuotteen sijoitus: järjestelmä + rotu --- */}
                                   <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
                                     <select value={SYSTEMS.includes(p.system) ? p.system : "Muu"} onChange={e => setSystem(p.id, e.target.value)}
-                                      aria-label="Pelijärjestelmä"
+                                      aria-label="Game system"
                                       style={{ background: "var(--bg)", border: "1px solid var(--line-soft)", borderRadius: "var(--r1)", padding: "5px 8px", color: "var(--text-3)", fontSize: 12, flex: "1 1 140px", minWidth: 0 }}>
                                       {SYSTEMS.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
@@ -3234,7 +3340,7 @@ function Tracker({ session, online, onSignOut }) {
                                       style={{ background: "var(--bg)", border: "1px solid var(--line-soft)", borderRadius: "var(--r1)", padding: "5px 8px", fontSize: 12, boxSizing: "border-box" }}
                                     />
                                     <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 12, cursor: "pointer", padding: 2, textDecoration: "underline", flexShrink: 0 }}>
-                                      poista
+                                      remove
                                     </button>
                                   </div>
                                 </div>
@@ -3260,11 +3366,11 @@ function Tracker({ session, online, onSignOut }) {
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Chevron open={galleryOpen} />
                 <span className="display" style={{ fontSize: 16, color: "var(--gold-mid)", letterSpacing: ".06em", textTransform: "uppercase" }}>
-                  Galleria
+                  Gallery
                 </span>
               </span>
               <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                {allPhotos.length} {allPhotos.length === 1 ? "kuva" : "kuvaa"}
+                {allPhotos.length} {allPhotos.length === 1 ? "photo" : "photos"}
               </span>
             </button>
 
@@ -3284,7 +3390,7 @@ function Tracker({ session, online, onSignOut }) {
                       border: "1px solid var(--line-soft)", background: "var(--surface-2)",
                     }}>
                     {photoUrls[ph.p]
-                      ? <img src={photoUrls[ph.p]} alt={`${ph.unit} maalattuna`} loading="lazy"
+                      ? <img src={photoUrls[ph.p]} alt={`${ph.unit} painted`} loading="lazy"
                           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       : <span style={{ fontSize: 18, opacity: .4 }}>🖼️</span>}
                     <span style={{
@@ -3344,7 +3450,7 @@ function Tracker({ session, online, onSignOut }) {
                         </div>
                         {a.unlocked ? (
                           <div style={{ fontSize: 9.5, color: T.color, marginTop: 5, opacity: 0.75, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                            {T.name}{a.earnedAt ? ` · ${fiDate(new Date(a.earnedAt))}` : ""}
+                            {T.name}{a.earnedAt ? ` · ${fmtDate(new Date(a.earnedAt))}` : ""}
                           </div>
                         ) : (
                           <div style={{ marginTop: 6 }}>
@@ -3368,21 +3474,21 @@ function Tracker({ session, online, onSignOut }) {
           <section className="panel" style={{ marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                Viimeiset 3 kuukautta
+                Last 3 months
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
-                vähän
+                less
                 {["var(--surface-2)", "#5A4520", "#8A6B2C", "var(--gold-mid)", "var(--gold)"].map(c => (
                   <span key={c} style={{ width: 9, height: 9, borderRadius: "2px", background: c, display: "inline-block" }} />
                 ))}
-                paljon
+                more
               </span>
             </div>
             <Heatmap byDay={momentum.byDay} />
             <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
               {momentum.best > 0
-                ? `Pisin putki: ${momentum.best} pv · ${momentum.byDay.size} aktiivista päivää · yhteensä ${momentum.totalSteps} askelta`
-                : "Ei vielä merkintöjä"}
+                ? `Longest streak: ${momentum.best} days · ${momentum.byDay.size} active days · ${momentum.totalSteps} steps total`
+                : "No entries yet"}
             </div>
           </section>
         )}
@@ -3461,7 +3567,7 @@ function App() {
           padding: "8px 14px", fontSize: 13, textAlign: "center",
           fontFamily: "var(--body)",
         }}>
-          ● Ei verkkoyhteyttä — muutokset tallentuvat kun yhteys palaa
+          ● No connection - changes will be saved when it returns
         </div>
       )}
       {swUpdate && (
@@ -3471,12 +3577,12 @@ function App() {
           padding: "8px 10px 8px 14px", display: "flex", alignItems: "center", gap: 10,
           boxShadow: "0 6px 24px rgba(0,0,0,.5)", fontFamily: "var(--body)",
         }}>
-          <span style={{ fontSize: 13, color: "var(--text-2)" }}>Uusi versio saatavilla</span>
+          <span style={{ fontSize: 13, color: "var(--text-2)" }}>New version available</span>
           <button onClick={() => swUpdate.postMessage("skip-waiting")} style={{
             background: "linear-gradient(135deg,var(--gold-deep),var(--gold-dim))", border: "1px solid var(--gold)",
             borderRadius: "var(--r1)", padding: "6px 12px", color: "#1A1408", fontWeight: 700,
             fontSize: 13, cursor: "pointer",
-          }}>Päivitä</button>
+          }}>Update</button>
         </div>
       )}
     </>
@@ -3487,15 +3593,15 @@ function App() {
   if (!supa) return (
     <div style={center}>
       <div>
-        <h1 style={{ fontFamily: "var(--display)", color: "var(--gold)", fontSize: 20 }}>Asetukset puuttuvat</h1>
+        <h1 style={{ fontFamily: "var(--display)", color: "var(--gold)", fontSize: 20 }}>Configuration missing</h1>
         <p style={{ maxWidth: 380, lineHeight: 1.6, fontSize: 14 }}>
-          Täytä <code style={{ color: "var(--gold-mid)" }}>SUPABASE_URL</code> ja <code style={{ color: "var(--gold-mid)" }}>SUPABASE_ANON_KEY</code> tiedoston <code style={{ color: "var(--gold-mid)" }}>index.html</code> alusta.
+          Fill in <code style={{ color: "var(--gold-mid)" }}>SUPABASE_URL</code> and <code style={{ color: "var(--gold-mid)" }}>SUPABASE_ANON_KEY</code> at the top of <code style={{ color: "var(--gold-mid)" }}>app.jsx</code>.
         </p>
       </div>
     </div>
   );
 
-  if (!ready) return <div style={center}>Ladataan…</div>;
+  if (!ready) return <div style={center}>Loading…</div>;
   if (!session) return <>{banners}<AuthScreen /></>;
   return <>{banners}<Tracker key={session.user.id} session={session} online={online} onSignOut={() => supa.auth.signOut()} /></>;
 }
