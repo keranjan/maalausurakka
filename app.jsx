@@ -1400,15 +1400,34 @@ function Tracker({ session, online, onSignOut }) {
     const wkPrev = addDays(startOfWeek(now), -7).getTime();
     const todayKey = dayKey(now);
 
+    /* NETTOETENEMINEN, ei siirtymien lukumäärä.
+       Aiemmin laskettiin vain eteenpäin-siirtymät ja taaksepäin-korjaukset
+       jätettiin huomiotta. Silloin tilojen kierrättäminen kasvatti lukua
+       loputtomasti: 0→1→2→3→4→0→1→2 tuotti 6 askelta, vaikka mini eteni
+       nettona kaksi vaihetta.
+
+       Nyt jokainen siirtymä lasketaan etumerkillisenä (s - f), joten
+       taaksepäin-korjaus kumoaa vastaavan eteenpäin-siirtymän täsmälleen.
+       Päiväkohtainen summa rajataan nollaan: pelkkä virheiden korjailu ei
+       ole maalaamista, mutta se ei myöskään syö edellisten päivien työtä. */
+    const rawByDay = new Map();
     log.forEach(e => {
-      if (!(e.s > e.f)) return;           // vain eteenpäin, ei korjauksia eikä 4→0-kiertoa
-      const n = e.n || 1;
-      const d = new Date(e.t);
-      const k = dayKey(d);
-      byDay.set(k, (byDay.get(k) || 0) + n);
-      if (k === todayKey) today += n;
-      if (e.t >= wk0) thisWeek += n;
-      else if (e.t >= wkPrev) lastWeek += n;
+      const delta = ((e.s ?? 0) - (e.f ?? 0)) * (e.n || 1);
+      if (!delta) return;
+      const k = dayKey(new Date(e.t));
+      rawByDay.set(k, (rawByDay.get(k) || 0) + delta);
+    });
+
+    rawByDay.forEach((sum, k) => {
+      const net = Math.max(0, sum);
+      if (net > 0) byDay.set(k, net);
+    });
+
+    today = byDay.get(todayKey) || 0;
+    byDay.forEach((net, k) => {
+      const t = new Date(k + "T00:00:00").getTime();
+      if (t >= wk0) thisWeek += net;
+      else if (t >= wkPrev) lastWeek += net;
     });
 
     // putki

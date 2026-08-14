@@ -8,7 +8,7 @@
  * Kun muutat index.html:ää, nosta CACHE-versiota. Muuten selain voi tarjoilla
  * vanhaa runkoa vielä pitkään.
  */
-const CACHE = "paintlog-v20";
+const CACHE = "paintlog-v21";
 
 /* sovelluksen runko */
 const SHELL = [
