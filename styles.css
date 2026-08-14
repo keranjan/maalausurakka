@@ -276,6 +276,7 @@ button, input, select, textarea { font-family: inherit; }
 
 .chip {
   width: 34px; height: 34px;
+  letter-spacing: -.02em;
   border-radius: var(--rf);
   border: 2px solid;
   font-family: var(--mono);
@@ -332,11 +333,21 @@ button, input, select, textarea { font-family: inherit; }
   white-space: nowrap;
 }
 
-.pipe-0 { background: linear-gradient(180deg, #34343C, #26262C); color: var(--s0); }
-.pipe-1 { background: linear-gradient(180deg, #354856, #2A3742); color: #B9CEDD; }
-.pipe-2 { background: linear-gradient(180deg, #33333A, #26262C); color: var(--s2); }
-.pipe-3 { background: linear-gradient(180deg, #6A4019, #4A2D14); color: #F5B573; }
-.pipe-4 { background: linear-gradient(180deg, #7A6224, #4D3D18); color: var(--s4); }
+/* Segmentit täytetään vaiheen TUNNUSVÄRILLÄ, ei sen taustavärillä.
+   Aiemmin täyttö tuli --sN-bg-arvoista, jolloin pohjamaalattu (#33333A)
+   ja to-do (#34343C) olivat käytännössä sama tummanharmaa eivätkä
+   erottuneet toisistaan. Nyt palkki lukee samoin kuin miniatyyrinapit:
+   harmaa → sininen → vaaleanharmaa → oranssi → kulta.
+
+   Tekstiväri on valittu kontrastin mukaan (kaikki ≥ 5.7:1). */
+.pipe-0 { background: linear-gradient(180deg, #74767D, var(--s0)); color: #0E0E10; }
+.pipe-1 { background: linear-gradient(180deg, #8FADC6, var(--s1)); color: #0E0E10; }
+.pipe-2 { background: linear-gradient(180deg, #D7D5CF, var(--s2)); color: #0E0E10; }
+.pipe-3 { background: linear-gradient(180deg, #EE9C4C, var(--s3)); color: #0E0E10; }
+.pipe-4 { background: linear-gradient(180deg, #FFD870, var(--s4)); color: #0E0E10; }
+
+/* To-do on tarkoituksella himmein: se on tekemätöntä työtä, ei saavutus. */
+.pipe-0 { opacity: .55; }
 
 /* ohut versio korteille */
 .pipeline.slim { height: 6px; border-radius: var(--rf); border: none; }

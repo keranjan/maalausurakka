@@ -35,10 +35,10 @@ const VAPID_PUBLIC_KEY = "BGj0o9zfUS6MirJfp4y-lOwM-IAekSK4y2SfebJ6XoHX-oHZLHmZ30
 
 const STAGES = [
   { key: 0, name: "To do",             short: "TD", color: "var(--s0)", bg: "var(--s0-bg)", desc: "Bare grey plastic",   verb: "assembly",       w: 6 },
-  { key: 1, name: "Assembled",           short: "KA", color: "var(--s1)", bg: "var(--s1-bg)", desc: "Built, no paint yet", verb: "priming",        w: 2 },
-  { key: 2, name: "Primed",     short: "PM", color: "var(--s2)", bg: "var(--s2-bg)", desc: "Primer applied",     verb: "base coats",     w: 10 },
-  { key: 3, name: "Painting started", short: "MA", color: "var(--s3)", bg: "var(--s3-bg)", desc: "Work in progress",          verb: "finishing",      w: 15 },
-  { key: 4, name: "Finished",            short: "OK", color: "var(--gold)", bg: "var(--gold-deep)", desc: "Painted and done!", verb: null,                  w: 0 },
+  { key: 1, name: "Assembled",           short: "AS", color: "var(--s1)", bg: "var(--s1-bg)", desc: "Built, no paint yet", verb: "priming",        w: 2 },
+  { key: 2, name: "Primed",     short: "PR", color: "var(--s2)", bg: "var(--s2-bg)", desc: "Primer applied",     verb: "base coats",     w: 10 },
+  { key: 3, name: "Painting started", short: "WIP", color: "var(--s3)", bg: "var(--s3-bg)", desc: "Work in progress",          verb: "finishing",      w: 15 },
+  { key: 4, name: "Finished",            short: "OK", color: "var(--s4)", bg: "var(--s4-bg)", desc: "Painted and done!", verb: null,                  w: 0 },
 ];
 
 const SYSTEMS = [
@@ -221,19 +221,37 @@ async function recognizeStage({ apiKey, base64, unit, count, currentStages }) {
 Currently recorded state: ${tally}.
 
 Judge which stage the miniatures in the photo have reached. Options:
-- "assembled": bare grey or coloured plastic, no paint
-- "primed": an even single-colour undercoat (black, grey, bone), no other colours
-- "painting started": several colours present, but the work is unfinished
+- "assembled": bare plastic, no paint of any kind
+- "primed": an even single-colour undercoat sprayed or brushed over the plastic
+- "painting started": two or more distinct colours present, work unfinished
 
 NEVER answer "finished". Edge highlights and base rims cannot be judged
 reliably from a photo, so marking something finished is left to the user.
 
-DO NOT GUESS if you are unsure. These three cases are genuinely hard from a
-photo, and it is better to ask than to guess:
-- grey primer over grey plastic (the only difference is sheen: bare plastic
-  is glossy and shows mould lines, primer is completely matt)
-- black primer over black plastic
-- bone-coloured primer, which can look like finished paintwork
+HOW TO TELL BARE PLASTIC FROM PRIMER — read this carefully, it is the part
+most often got wrong:
+
+Bare plastic (assembled):
+- glossy or satin sheen, especially on curved surfaces and where light hits
+- visible mould lines, sprue attachment nubs, faint seams
+- Games Workshop grey plastic is a slightly bluish light grey; other kits are
+  bone, dark grey or coloured
+- fine detail looks sharp and slightly translucent at thin edges
+- glue marks may be shiny
+
+Primer (primed):
+- completely matt, no sheen at all, even under direct light
+- surface looks slightly powdery or velvety
+- fine recesses are marginally softened, detail slightly muted
+- colour is uniform across every part regardless of what the parts were
+
+If you cannot see a clear sheen difference, you CANNOT tell these apart.
+Say so rather than guessing.
+
+BIAS TOWARD THE LOWER STAGE. If you are weighing "assembled" against "primed"
+and the evidence is not decisive, the correct answer is "assembled" or
+uncertainty — never "primed". Under-reporting costs the user one tap to fix.
+Over-reporting silently corrupts their records.
 
 If you hesitate between two stages, return both in "uncertain_between" and
 write a question the user can answer by looking at the miniature in their
@@ -244,11 +262,11 @@ visible; the user will correct the number.
 
 Reply ONLY with a JSON object, nothing else. One of two shapes:
 
-Confident:
-{"stage": "primed", "visible": 12, "note": "at most 12 words in English"}
+Confident (only when the evidence above is clearly visible):
+{"stage": "painting started", "visible": 12, "note": "at most 12 words in English"}
 
 Uncertain between two:
-{"uncertain_between": ["assembled", "primed"], "question": "Is there primer on these? Bare plastic is glossy, primer is matt.", "visible": 12}` },
+{"uncertain_between": ["assembled", "primed"], "question": "Is there primer on these? Bare plastic is glossy and shows mould lines; primer is completely matt.", "visible": 12}` },
       ]}],
     }),
   });
@@ -959,6 +977,48 @@ function FactionInput({ value, onCommit, listId, options, style }) {
    Enteriä painetaan. Määrän kohdalla tämä ei ole kosmetiikkaa: jos 20 -> 15
    tallentuisi joka näppäimestä, kenttä näkisi välillä arvon "1" ja 19 miniä
    edistymisineen katoaisi ennen kuin "5" ehtii perään. Esc peruu. */
+/* Yleinen tekstikenttä, joka tallentaa vasta kun fokus poistuu tai Enteriä
+   painetaan. Esc peruu. Sama periaate kuin rotukentässä: nimen muutos
+   uudelleenjärjestää listan, joten tallennus joka näppäimestä tekisi
+   kirjoittamisesta mahdotonta. */
+function TextCommitInput({ value, onCommit, placeholder, ariaLabel }) {
+  const [draft, setDraft] = useState(value || "");
+  const [focused, setFocused] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { if (!focused) setDraft(value || ""); }, [value, focused]);
+  const dirty = draft.trim() !== (value || "").trim();
+  const commit = () => {
+    const v = draft.trim();
+    if (v && dirty) onCommit(v); else setDraft(value || "");
+  };
+  return (
+    <span style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <input
+        ref={ref} value={draft} placeholder={placeholder} aria-label={ariaLabel}
+        className={"field" + (dirty ? " is-dirty" : "")}
+        style={{ paddingRight: dirty ? 30 : 12 }}
+        onChange={e => setDraft(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); commit(); }}
+        onKeyDown={e => {
+          if (e.key === "Enter") { e.preventDefault(); ref.current.blur(); }
+          if (e.key === "Escape") { setDraft(value || ""); setFocused(false); ref.current.blur(); }
+        }}
+      />
+      {dirty && (
+        <button
+          onMouseDown={e => e.preventDefault()}
+          onClick={commit}
+          title="Save (or press Enter)" aria-label="Save"
+          style={{
+            position: "absolute", right: 6, background: "none", border: "none",
+            color: "var(--gold)", fontSize: 14, lineHeight: 1, cursor: "pointer", padding: 3,
+          }}>✓</button>
+      )}
+    </span>
+  );
+}
+
 function UnitEditRow({ unit, onRename, onResize, onRemove, canRemove }) {
   const [name, setName] = useState(unit.name);
   const [count, setCount] = useState(String(unit.minis.length));
@@ -1987,10 +2047,22 @@ function Tracker({ session, online, onSignOut }) {
       /* Epävarmuus kahden vaiheen välillä: kysytään käyttäjältä sen sijaan
          että arvattaisiin. Harmaa primer harmaan muovin päällä on
          käytännössä mahdoton erottaa kuvasta — ero on vain kiillossa. */
-      const between = (r.uncertain_between || [])
+      let between = (r.uncertain_between || [])
         .map(x => STAGE_BY_NAME[String(x).toLowerCase()])
         .filter(Boolean);
-      const stage = STAGE_BY_NAME[String(r.stage || "").toLowerCase()];
+      let stage = STAGE_BY_NAME[String(r.stage || "").toLowerCase()];
+
+      /* Rakenteellinen suoja: kasattu (1) ja pohjamaalattu (2) erottaa
+         toisistaan vain kiilto, joka katoaa kuvanpakkauksessa. Malli on
+         havaittu OLEVAN VARMA ollessaan väärässä tässä parissa, joten
+         kehotteen "älä arvaa" -ohje ei riitä — se ei koskaan laukea.
+         Siksi tämä pari kysytään AINA, mallin arvio esivalintana.
+         "Maalaus aloitettu" (useita värejä) on selvästi näkyvä eikä
+         tarvitse kysymystä. */
+      if (stage === 1 || stage === 2) {
+        between = [1, 2];
+        stage = null;
+      }
 
       if (!stage && between.length < 2) {
         setRecogErr("Could not determine the stage from the photo. Mark it manually or try another photo.");
@@ -2006,7 +2078,14 @@ function Tracker({ session, online, onSignOut }) {
       setRecog({
         pid: p.id, uid: u.id, unit: u.name, product: p.name,
         stage: stage || null,
-        ask: stage ? null : { options: [...new Set(between)].sort(), question: r.question || "Which of these is closer?" },
+        ask: stage ? null : {
+          options: [...new Set(between)].sort(),
+          question: r.question || "Is there primer on these? Bare plastic is glossy and shows mould lines; primer is completely matt.",
+          /* mallin oma arvio esivalintana — vahvistus on yksi napautus,
+             mutta valinta on aina käyttäjän */
+          hint: STAGE_BY_NAME[String(r.stage || "").toLowerCase()] || null,
+          note: r.note || "",
+        },
         count: behind > 0 ? behind : guess, total: u.minis.length,
         behind, note: r.note || "", file,
         overflow: (parseInt(r.visible) || 0) > u.minis.length,
@@ -2056,6 +2135,8 @@ function Tracker({ session, online, onSignOut }) {
   };
 
   /* ---- yksikön muokkaus ---- */
+  const renameProduct = (pid, name) => setProducts(prev => prev.map(p => (p.id === pid ? { ...p, name } : p)));
+
   const renameUnit = (pid, unitId, name) => setProducts(prev => prev.map(p => p.id !== pid ? p : {
     ...p, units: p.units.map(u => u.id !== unitId ? u : { ...u, name }),
   }));
@@ -2318,12 +2399,20 @@ function Tracker({ session, online, onSignOut }) {
                   </p>
                   <p className="hint" style={{ margin: "0 0 12px" }}>
                     Look at the miniature in your hand — this cannot be judged reliably from a photo.
+                    {recog.ask.hint != null && (
+                      <> The photo suggests <strong style={{ color: STAGES[recog.ask.hint].color }}>
+                        {STAGES[recog.ask.hint].name.toLowerCase()}</strong>, but that guess is often wrong.</>
+                    )}
                   </p>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {recog.ask.options.map(opt => (
                       <button key={opt}
                         className="btn btn-quiet"
-                        style={{ flex: "1 1 130px", borderColor: STAGES[opt].color, color: STAGES[opt].color }}
+                        style={{
+                          flex: "1 1 130px",
+                          borderColor: STAGES[opt].color, color: STAGES[opt].color,
+                          borderWidth: recog.ask.hint === opt ? 2 : 1,
+                        }}
                         onClick={() => setRecog(r => {
                           const behind = unit.minis.filter(x => x < opt).length;
                           return { ...r, stage: opt, ask: null, count: Math.max(1, Math.min(behind || 1, r.count)) };
@@ -3311,6 +3400,18 @@ function Tracker({ session, online, onSignOut }) {
                                   })}
 
                                   {/* --- miniatyyrien muokkaus --- */}
+                                  {editProds.includes(p.id) && (
+                                    <div style={{ marginTop: 14, marginBottom: 4 }}>
+                                      <div className="eyebrow" style={{ marginBottom: 5 }}>Product name</div>
+                                      <TextCommitInput
+                                        value={p.name}
+                                        onCommit={v => renameProduct(p.id, v)}
+                                        placeholder="Product name"
+                                        ariaLabel="Product name"
+                                      />
+                                      <div className="eyebrow" style={{ marginTop: 14, marginBottom: 5 }}>Miniatures</div>
+                                    </div>
+                                  )}
                                   {editProds.includes(p.id) && <AddUnitForm onAdd={(n, c) => addUnit(p.id, n, c)} />}
 
                                   <button
