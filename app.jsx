@@ -463,6 +463,8 @@ const startOfWeek = (d) => { const x = startOfDay(d); x.setDate(x.getDate() - ((
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmtDate = (d) => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+const fmtDateTime = (d) =>
+  `${MONTHS[d.getMonth()]} ${d.getDate()}, ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
 /* ---------- tyylipohjat ---------- */
 const S = {
@@ -1195,6 +1197,7 @@ function Tracker({ session, online, onSignOut }) {
   const [achOpen, setAchOpen] = useState(false);
   const [popup, setPopup] = useState(null);         // juuri ansaitut saavutukset
   const firstAch = useRef(true);
+  const justRemoved = useRef(new Set());
   const [openFacs, setOpenFacs] = useState([]);     // tyhjä = kaikki kiinni
   const [openProds, setOpenProds] = useState([]);   // tyhjä = kaikki tuotteet kiinni
   const [openPlans, setOpenPlans] = useState([]);    // avatut suunnitelmat (unit-id)
@@ -1509,13 +1512,34 @@ function Tracker({ session, online, onSignOut }) {
     if (!newly.length) { firstAch.current = false; return; }
     const now = new Date().toISOString();
     setAchieved(prev => ({ ...prev, ...Object.fromEntries(newly.map(a => [a.id, now])) }));
-    // ensimmäisellä laskennalla vanhat suoritukset kirjataan hiljaa, ei 30 ilmoitusta
-    if (!firstAch.current) {
-      setPopup(newly);
+    /* Ensimmäisellä laskennalla vanhat suoritukset kirjataan hiljaa, ei 30
+       ilmoitusta. Samoin jos saavutus juuri poistettiin käsin ja sen ehto
+       yhä täyttyy: se ansaitaan uudelleen, mutta ilman ilmoitusta —
+       muuten poistonappi tuottaisi välittömän juhlabannerin. */
+    const loud = newly.filter(a => !justRemoved.current.has(a.id));
+    newly.forEach(a => justRemoved.current.delete(a.id));
+    if (!firstAch.current && loud.length) {
+      setPopup(loud);
       setTimeout(() => setPopup(null), 5000);
     }
     firstAch.current = false;
   }, [metrics, loaded]);
+
+  /* Saavutuksen poisto. Jos ehto yhä täyttyy, saavutus ansaitaan heti
+     uudelleen — se on tarkoituksellista, koska mittari on totuus. Siksi
+     käyttäjälle kerrotaan se etukäteen sen sijaan että poisto näyttäisi
+     epäonnistuvan. */
+  const removeAchievement = (id) => {
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    if (!a) return;
+    const stillQualifies = (a.get(metrics) || 0) >= a.target;
+    const msg = stillQualifies
+      ? `Remove "${a.name}"?\n\nNote: you still meet the requirement (${Math.min(a.get(metrics) || 0, a.target)}/${a.target}), so it will be earned again straight away. Correct the underlying miniatures first if it was awarded by mistake.`
+      : `Remove "${a.name}"?\n\nYou can earn it again later.`;
+    if (!window.confirm(msg)) return;
+    justRemoved.current.add(id);
+    setAchieved(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
 
   const grouped = useMemo(() => {
     const bySys = new Map();
@@ -3550,8 +3574,25 @@ function Tracker({ session, online, onSignOut }) {
                           {a.desc}
                         </div>
                         {a.unlocked ? (
-                          <div style={{ fontSize: 9.5, color: T.color, marginTop: 5, opacity: 0.75, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                            {T.name}{a.earnedAt ? ` · ${fmtDate(new Date(a.earnedAt))}` : ""}
+                          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 6, marginTop: 5 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 9.5, color: T.color, opacity: 0.75, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                                {T.name}
+                              </div>
+                              {a.earnedAt && (
+                                <div className="mono" style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}
+                                  title={new Date(a.earnedAt).toLocaleString()}>
+                                  {fmtDateTime(new Date(a.earnedAt))}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => removeAchievement(a.id)}
+                              title="Remove this achievement" aria-label={`Remove ${a.name}`}
+                              style={{
+                                background: "none", border: "none", color: "var(--text-4)",
+                                fontSize: 13, lineHeight: 1, cursor: "pointer", padding: "2px 3px", flexShrink: 0,
+                              }}>×</button>
                           </div>
                         ) : (
                           <div style={{ marginTop: 6 }}>
