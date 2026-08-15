@@ -301,8 +301,14 @@ function urlB64ToU8(base64) {
    day one, a Chaos god by day five.
    Placeholders: {name} profile, {grey} unpainted, {next} next move,
    {streak} best streak. */
+/* Muistutus lähtee vasta kun urakka on ollut hiljaa näin monta päivää.
+   Aiemmin raja oli 1, jolloin muistutus tuli JOKA aamu myös silloin kun
+   maalasi joka ilta: edellinen merkintä oli eilen, joten "gap >= 1" täyttyi
+   heti keskiyön jälkeen. Kolme päivää tarkoittaa oikeaa taukoa. */
+const REMIND_AFTER_DAYS = 3;
+
 const NOTIFY = {
-  soft: [ // 1 day idle — noble, encouraging
+  soft: [ // 3-4 days idle — noble, encouraging
     { who: "The Emperor of Mankind", lines: [
       "The Golden Throne sees all, {name} — including your {grey} unpainted sons. One brushstroke would please your Father.",
       "I have endured ten thousand years upon this throne. You can endure one evening at the desk.",
@@ -348,7 +354,7 @@ const NOTIFY = {
       "The dead are patient. Your models need not be.",
       "Every stroke is a small defiance of ending. Make one." ] },
   ],
-  mid: [ // 2–4 days — sterner, mocking
+  mid: [ // 5-7 days — sterner, mocking
     { who: "Roboute Guilliman", lines: [
       "Several days without progress. This inefficiency would have infuriated my brothers. {grey} models wait, {name}.",
       "I did not rebuild an Imperium by leaving projects half-finished.",
@@ -390,7 +396,7 @@ const NOTIFY = {
       "I warned them too. They did not listen either.",
       "The threads of your evening are still unwoven. Choose the one that leads to {next}." ] },
   ],
-  hard: [ // 5+ days — full grimdark
+  hard: [ // 8+ days — full grimdark
     { who: "Be'lakor", lines: [
       "I was forgotten for a thousand years. Just as you forgot your {grey} soldiers. Return, {name}.",
       "Neglect is the cruellest of all the tortures. I would know it best of anyone.",
@@ -1209,6 +1215,9 @@ function Tracker({ session, online, onSignOut }) {
   const [agentErr, setAgentErr] = useState(null);
   const [inventory, setInventory] = useState([]);    // oma maalivarasto
   const [invOpen, setInvOpen] = useState(false);
+  const [shopping, setShopping] = useState([]);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [shopDraft, setShopDraft] = useState("");
   const [editProds, setEditProds] = useState([]);    // tuotteet muokkaustilassa (ei tallenneta)
   const [notifyPerm, setNotifyPerm] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
   const [photoUrls, setPhotoUrls] = useState({});    // polku -> allekirjoitettu url
@@ -1230,19 +1239,20 @@ function Tracker({ session, online, onSignOut }) {
     (async () => {
       try {
         const { data, error } = await supa.from("profiles")
-          .select("display_name, anthropic_key, data, log, achievements").eq("id", userId).maybeSingle();
+          .select("display_name, anthropic_key, data, log, achievements, shopping").eq("id", userId).maybeSingle();
         if (error) throw error;
         if (data) {
           setProducts(Array.isArray(data.data) ? data.data : []);
           setLog(Array.isArray(data.log) ? data.log : []);
           setAchieved(data.achievements && typeof data.achievements === "object" ? data.achievements : {});
+          setShopping(Array.isArray(data.shopping) ? data.shopping : []);
           setProfileName(data.display_name || session.user.email);
           setApiKey(data.anthropic_key || "");
           setDraftKey(data.anthropic_key || "");
           setDraftName(data.display_name || "");
         } else {
           const fallback = session.user.user_metadata?.display_name || session.user.email.split("@")[0];
-          await supa.from("profiles").insert({ id: userId, display_name: fallback, data: [], log: [], achievements: {} });
+          await supa.from("profiles").insert({ id: userId, display_name: fallback, data: [], log: [], achievements: {}, shopping: [] });
           setProfileName(fallback);
           setDraftName(fallback);
         }
@@ -1298,7 +1308,7 @@ function Tracker({ session, online, onSignOut }) {
     saveTimer.current = setTimeout(async () => {
       try {
         const { error } = await supa.from("profiles")
-          .update({ data: products, log, achievements: achieved, updated_at: new Date().toISOString() }).eq("id", userId);
+          .update({ data: products, log, achievements: achieved, shopping, updated_at: new Date().toISOString() }).eq("id", userId);
         if (error) throw error;
         setSyncState("synced");
       } catch (e) {
@@ -1307,7 +1317,7 @@ function Tracker({ session, online, onSignOut }) {
       }
     }, 800);
     return () => clearTimeout(saveTimer.current);
-  }, [products, log, achieved, loaded, userId, retry]);
+  }, [products, log, achieved, shopping, loaded, userId, retry]);
 
   /* yhteyden palatessa: jos tallennus oli jäänyt virheeseen, yritä heti uudelleen */
   useEffect(() => {
@@ -1778,6 +1788,50 @@ function Tracker({ session, online, onSignOut }) {
     } catch (e) { console.warn(e); loadInventory(); }
   };
 
+  /* ---- ostoslista ---- */
+  const addShopping = (text, note = "") => {
+    const t = String(text || "").trim();
+    if (!t) return;
+    /* Ei duplikaatteja: sama nimi kahdesti listalla on vain melua kaupassa. */
+    if (shopping.some(x => x.text.toLowerCase() === t.toLowerCase() && !x.done)) return;
+    setShopping(prev => [{ id: uid(), text: t, note, qty: 1, done: false, t: Date.now() }, ...prev]);
+  };
+
+  const toggleShopping = (id) =>
+    setShopping(prev => prev.map(x => x.id === id ? { ...x, done: !x.done } : x));
+
+  const setShoppingQty = (id, qty) =>
+    setShopping(prev => prev.map(x => x.id === id ? { ...x, qty: Math.max(1, Math.min(99, parseInt(qty) || 1)) } : x));
+
+  const removeShopping = (id) => setShopping(prev => prev.filter(x => x.id !== id));
+
+  const clearDoneShopping = () => setShopping(prev => prev.filter(x => !x.done));
+
+  /* Ehdotukset: loppuneet ja vähissä olevat maalit, sekä suunnitelmissa
+     mainitut maalit joita ei ole varastossa. Nämä ovat juuri ne asiat
+     jotka unohtuvat kaupassa, ja sovellus tietää ne jo. */
+  const shoppingSuggestions = useMemo(() => {
+    const have = new Set(shopping.filter(x => !x.done).map(x => x.text.toLowerCase()));
+    const out = [];
+
+    inventory.forEach(p => {
+      if ((p.stock === "empty" || p.stock === "low") && !have.has(p.name.toLowerCase())) {
+        out.push({ text: p.name, note: p.stock === "empty" ? "out of paint" : "running low", kind: "stock" });
+      }
+    });
+
+    const owned = new Set(inventory.map(p => p.name.toLowerCase()));
+    Object.values(plans).forEach(pl => {
+      (pl.steps || []).forEach(st => (st.paints || []).forEach(name => {
+        const k = String(name).toLowerCase();
+        if (!owned.has(k) && !have.has(k) && !out.some(o => o.text.toLowerCase() === k)) {
+          out.push({ text: name, note: `needed for ${pl.title}`, kind: "plan" });
+        }
+      }));
+    });
+    return out;
+  }, [inventory, plans, shopping]);
+
   const deletePlan = async (unitId) => {
     if (!window.confirm("Delete this plan?")) return;
     setPlans(prev => { const n = { ...prev }; delete n[unitId]; return n; });
@@ -1818,10 +1872,10 @@ function Tracker({ session, online, onSignOut }) {
 
     const keys = [...momentum.byDay.keys()].sort();
     const last = keys.length ? new Date(keys[keys.length - 1] + "T00:00:00") : null;
-    const gap = last ? Math.floor((startOfDay(now) - last) / 86400000) : 1;
-    if (gap < 1) return;
+    const gap = last ? Math.floor((startOfDay(now) - last) / 86400000) : REMIND_AFTER_DAYS;
+    if (gap < REMIND_AFTER_DAYS) return;
 
-    const pool = gap >= 5 ? NOTIFY.hard : gap >= 2 ? NOTIFY.mid : NOTIFY.soft;
+    const pool = gap >= 8 ? NOTIFY.hard : gap >= 5 ? NOTIFY.mid : NOTIFY.soft;
     const msg = pickMessage(pool);
     const grey = Math.max(0, stats.total - stats.done);
     const fill = (s) => s
@@ -2715,6 +2769,14 @@ function Tracker({ session, online, onSignOut }) {
                             }}>
                             {STOCK_LABEL[pt.stock]}
                           </button>
+                          {(pt.stock === "empty" || pt.stock === "low") && (
+                            <button onClick={() => addShopping(pt.name, pt.stock === "empty" ? "out of paint" : "running low")}
+                              title="Add to shopping list" aria-label="Add to shopping list"
+                              style={{
+                                background: "none", border: "none", color: "var(--gold-dim)",
+                                fontSize: 13, cursor: "pointer", padding: "2px 4px", flexShrink: 0,
+                              }}>🛒</button>
+                          )}
                           <button onClick={() => removeFromInventory(pt.name)} aria-label="Remove paint"
                             style={{ background: "none", border: "none", color: "var(--text-4)", fontSize: 15, cursor: "pointer", padding: "2px 4px", flexShrink: 0 }}>×</button>
                         </div>
@@ -3500,6 +3562,107 @@ function Tracker({ session, online, onSignOut }) {
             </section>
           );
         })}
+
+        {/* ---------- SHOPPING LIST ---------- */}
+        <section style={{ marginBottom: 24 }}>
+          <button onClick={() => setShopOpen(v => !v)} aria-expanded={shopOpen}
+            className="acc-head"
+            style={{ borderBottom: "1px solid var(--line)", marginBottom: shopOpen ? 10 : 0 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Chevron open={shopOpen} />
+              <span className="display" style={{ fontSize: 16, color: "var(--gold-mid)", letterSpacing: ".06em", textTransform: "uppercase" }}>
+                Shopping list
+              </span>
+            </span>
+            <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+              {shopping.filter(x => !x.done).length
+                ? `${shopping.filter(x => !x.done).length} to buy`
+                : shopping.length ? "all picked up" : "empty"}
+            </span>
+          </button>
+
+          {shopOpen && (
+            <div className="acc-body">
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={shopDraft} onChange={e => setShopDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { addShopping(shopDraft); setShopDraft(""); } }}
+                  placeholder="Anything — a paint, a kit, a brush…"
+                  className="field" style={{ flex: 1 }} />
+                <button className="btn btn-gold" disabled={!shopDraft.trim()}
+                  onClick={() => { addShopping(shopDraft); setShopDraft(""); }}>
+                  Add
+                </button>
+              </div>
+
+              {/* ehdotukset: sovellus tietää nämä jo */}
+              {shoppingSuggestions.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="eyebrow" style={{ marginBottom: 6 }}>Suggested — tap to add</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {shoppingSuggestions.slice(0, 12).map(sg => (
+                      <button key={sg.text} className="pill"
+                        title={sg.note}
+                        onClick={() => addShopping(sg.text, sg.note)}
+                        style={{ borderColor: sg.kind === "plan" ? "var(--err)" : "var(--warn)" }}>
+                        + {sg.text}
+                        <span style={{ color: "var(--text-4)", marginLeft: 5, fontSize: 11 }}>
+                          {sg.kind === "plan" ? "not owned" : sg.note}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {shopping.length === 0 ? (
+                <p className="hint" style={{ marginTop: 12 }}>
+                  Nothing on the list. Paints running low and anything your plans need but you
+                  do not own will show up here as suggestions.
+                </p>
+              ) : (
+                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 2 }}>
+                  {[...shopping].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || b.t - a.t).map(item => (
+                    <div key={item.id} style={{
+                      display: "flex", alignItems: "center", gap: 9,
+                      padding: "8px 4px", borderBottom: "1px solid var(--line-soft)",
+                      opacity: item.done ? 0.45 : 1,
+                    }}>
+                      <button onClick={() => toggleShopping(item.id)}
+                        aria-label={item.done ? "Mark as not bought" : "Mark as bought"}
+                        className={"checkbox" + (item.done ? " is-on" : "")}
+                        style={{ cursor: "pointer" }}>
+                        {item.done ? "✓" : ""}
+                      </button>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{
+                          display: "block", fontSize: 14, color: "var(--text)",
+                          textDecoration: item.done ? "line-through" : "none",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>{item.text}</span>
+                        {item.note && (
+                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>{item.note}</span>
+                        )}
+                      </span>
+                      <input type="number" min="1" max="99" value={item.qty} aria-label="Quantity"
+                        onChange={e => setShoppingQty(item.id, e.target.value)}
+                        className="field mono"
+                        style={{ width: 54, padding: "5px 6px", fontSize: 13, flexShrink: 0, textAlign: "center" }} />
+                      <button onClick={() => removeShopping(item.id)}
+                        aria-label="Remove from list"
+                        style={{ background: "none", border: "none", color: "var(--text-4)", fontSize: 15, cursor: "pointer", padding: "2px 4px", flexShrink: 0 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {shopping.some(x => x.done) && (
+                <button className="btn-ghost" style={{ marginTop: 10 }} onClick={clearDoneShopping}>
+                  Clear {shopping.filter(x => x.done).length} picked up
+                </button>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* ---------- GALLERIA ---------- */}
         {allPhotos.length > 0 && (
